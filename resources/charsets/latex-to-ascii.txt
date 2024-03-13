@@ -1,0 +1,152 @@
+#
+# replace the string on the left side of | by the one one the right hand side
+# if no replacement is given, just drop the leading backslash
+#
+\%
+\in|in
+\pmod|mod
+\pm|+/-
+\gg|>>
+\ll|<<
+\approx|~~
+\leq|<=
+\geq|>=
+\neq|!=
+\preceq
+\ge|>=
+# CAUTION: do not delete blank! otherwise \le in \left will be replaced
+\le |<=
+\gt|>
+\gtrsim|>~
+\lt|<
+\dots|...
+\ldots|...
+\cdot|*
+\log|log
+# --------- brackets --------------
+\left \{|{
+\right \}|}
+\{|{
+\}|}
+\big(|(
+\big)|)
+\bigg)|)
+\bigg)|)
+\Big(|(
+\Big)|)
+\left(|(
+\right)|)
+\left[|[
+\right]|]
+\bigl \{|{
+\bigr \}|}
+\lceil|ceil[
+\rceil|]
+\lfloor|floor[
+\rfloor|]
+\triangle
+# ---------- greek letters ---------
+\alpha
+\beta
+\gamma
+\delta
+\epsilon
+\varepsilon|epsilon
+\zeta
+\eta
+\theta
+\vartheta|theta
+\iota
+\kappa
+\lambda
+\mu
+\nu
+\xi
+\pi
+\varpi|phi
+\rho
+\varrho|rho
+\sigma
+\varsigma|sigma
+\tau
+\upsilon
+\phi
+\varphi|phi
+\chi
+\psi
+\omega
+\Gamma
+\Delta
+\Theta
+\Lambda
+\Xi
+\Pi
+\Sigma
+\Upsilon
+\Phi
+\Psi
+\Omega
+#----------- functions --------------
+\sqrt
+\arccos
+\arcsin
+\arctan
+\cos
+\cosh
+\cot
+\coth
+\csc
+\deg
+\det
+\dim
+\exp
+\gcd
+\hom
+\inf
+\ker
+\lg
+\lim
+\liminf
+\limsup
+\ln
+\log
+\max
+\min
+\sec
+\sin
+\sinh
+\sup
+\tan
+\tanh
+#----------- other symbols ----------
+\over
+\ell|l
+\#
+\sharp|#
+\sim|~
+\times| x
+\subset
+\subseteq
+#----------- arrows -----------
+\to|->
+\rightarrow|-->
+\leftarrow|<--
+\Rightarrow|==>
+\Leftarrow|<==
+\Leftrightarrow| <=>
+#-----------
+\circ|o
+\star|*
+\ast|*
+\colon|:
+#----------- special expressions ---------
+\ifmmode{{\mathbb R}}\else{\({\mathbb R}\)}\fi|R
+#----------- resolving double switches
+\textE|E
+\tilde O|O~
+\SAT
+\NP
+\P
+\ZPP
+\poly
+\rm VP|VP

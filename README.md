@@ -1,93 +1,87 @@
-# latex
+# The Dagstuhl LaTeX project
 
+The aim of the Dagstuhl LaTeX project is to provide a simply-to-use php-interface for parsing metadata from LaTeX files.
+Since the metadata information comes as the contents of style-specific LaTeX macros (e.g. `\title{...}`, `\author{...}`), or environments (e.g. `\begin{abstract}...\end{abstract}`),
+we provide... 
+- some generic (low-level) methods for parsing macros/environments from the LaTeX source code
+- a string-conversion support for LaTeX <-> UTF8
 
+(these two may be useful in a wider context) and
+  
+- a customizable metadata reader which collects the metadata contained in a LaTeX file and converts it into a structured collection of UTF8-encoded strings.
 
-## Getting started
+## 1. Generic methods for parsing LaTeX files
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
-
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
-
-## Add your files
-
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
-
+To get to know the basic methods, let's have a look at the LIPIcs example file.
 ```
-cd existing_repo
-git remote add origin https://sidonia.dagstuhl.de:9000/dagpub/latex.git
-git branch -M main
-git push -uf origin main
+$latexFile = new LatexFile('/resources/latex-examples/lipics-authors-v2021.1.3/lipics-v2021-sample-article.tex');
 ```
+### Parsing macros
+The above file contains the macro `\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}` 
+specifying the underlying style file and the applied options.
+ 
+To read out this information in a structured way, just do the following:
+```
+$documentClass = $latexFile->getMacro('documentclass');
 
-## Integrate with your tools
+$documentClass->getArgument();
+// 'lipics-v2021'
 
-- [ ] [Set up project integrations](https://sidonia.dagstuhl.de:9000/dagpub/latex/-/settings/integrations)
+$documentClass->getOptions();
+// [ 'a4paper', 'UKenglish', 'cleveref', 'autoref', 'thm-restate' ]
+```
+If a macro may occur several times, apply `$latexFile->getMacros('...')` and you will get an array of `LatexMacro`-objects
+```
+$sections = $latexFile->getMacros('sectio');
+$sections[0]->getArgument();
+// 'Typesetting instructions -- Summary'
+```
+If a macro has more than one argument, use the `$macro->getArguments()` method to get its arguments as an array of strings. As an example, take the first author macro from the LIPIcs file:
+```
+\author{John Q. Public}{Dummy University Computing Laboratory, [optional: Address], Country \and My second affiliation, Country \and \url{http://www.myhomepage.edu} }{johnqpublic@dummyuni.org}{https://orcid.org/0000-0002-1825-0097}{(Optional) author-specific funding acknowledgements}
+```
+To split it into the different parts, just do:
+```
+$authors = $latexFile->getMacros('author');
+$firstAuthor = $authors[0];
+$firstAuthor->getArguments();
+// [ 'John Q. Public', 'Dummy University ...', 'johnqpublic@dummyuni.org', ... ]
+```
+### Parsing Environments
 
-## Collaborate with your team
+To read environments as `LatexEnvironment` objects from a LaTex-file, use  `$latexFile->getEnvironment('...');'` or `$latexFile->getEnvironments('...');'`. 
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+E.g. `$latexFile->getEnvironment('abstract')` will read the abstract, while `$latexFile->getEnvironments('figure')` will return the array of all figure-environments.
 
-## Test and Deploy
+The contents of an environment (i.e. what is between `\begin{...}` and `\end{...}`) can be catched using the `$environment->getContents()` method.
 
-Use the built-in continuous integration in GitLab.
+To get the total LaTeX code of the environment (including the `begin/end`) use `$environment->getSnippet()`.
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+**Note**: The getter-Methods for macros/environments remove `%...`-like comments  from the LaTex file internally. Therefore, the LaTeX snippets they return by the `->getSnippet()` method differ by the comments  
 
-***
+## 2. LaTeX to UTF8 conversion
 
-# Editing this README
+Converting metadata from LaTeX files to UTF8 can be arbitrarily complicated, depending on the structure of the underlying LaTeX file and the contents of the string to be converted. In most of the cases, `MetadataString::toUtf8String()` should do the job.
+```
+$metaString = new MetadataString('Fran\c{c}ois M\"{u}ller-\"{A}hrenbaum recently proved that $a^2 + b^2 = c^2$'.);
+$metaString->toUtf8String();
+// 'François Müller-Ährenbaum recently proved that a² + b² = c².'
+```
+(As a second argument the `MetadataString` constructor accepts a LaTex file which will be used to resolve unknown macros.)
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+The other direction, namely UTF8 to LaTeX, is established by the `Converter` class:
+```
+Converter::convert('François Müller-Ährenbaum', Converter::MAP_UTF8_TO_LATEX);
+// 'Fran\c{c}ois M\"{u}ller-\"{A}hrenbaum'
+```
+(Note that math environments cannot be reconstructed from the UTF8 code, so this is essentially limited to plain-text conversion.)
 
-## Suggestions for a good README
+## 3. Metadata-Reader
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+After a style-description php-class (see `src/Styles/StyleDescriptions`) has been configured for a certain LaTeX `documentclass`, the metadata extraction and conversion is as simple as it can be:
+```
+$reader = $latexFile->getMetadataReader();
+$metadata = $reader->getMetadata();
+// array of metadata - structured and converted as specified in the StyleDescription file
+```
+ 

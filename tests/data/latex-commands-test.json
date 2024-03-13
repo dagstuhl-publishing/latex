@@ -1,0 +1,32 @@
+[
+    [
+        "\\def\\basicDef{valueBasicDef}",
+        "\\basicDef",
+        "def",
+        "valueBasicDef"
+    ],
+    [
+        "\\def\\oneArgDef#1{\\scalebox{0.95}{\\texttt{\\color{darkblue}#1}}}",
+        "\\oneArgDef",
+        "def-with-arg",
+        "\\scalebox{0.95}{\\texttt{\\color{darkblue}#1}}"
+    ],
+    [
+        "\\newcommand{\\cmdTestWithBraces}{\\mathbb{N}}",
+        "\\cmdTestWithBraces",
+        "macro-no-arg",
+        "\\mathbb{N}"
+    ],
+    [
+        "\\renewcommand{\\renewCmd}{testValueOfRenewCmd}",
+        "\\renewCmd",
+        "macro-no-arg",
+        "testValueOfRenewCmd"
+    ],
+    [
+        "\\newcommand{\\cmdTestWithArg}[12]{\\write{#1}}",
+        "\\cmdTestWithArg",
+        "macro-with-arg",
+        "\\write{#1}"
+    ]
+]

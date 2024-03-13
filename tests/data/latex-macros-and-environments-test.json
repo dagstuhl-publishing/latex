@@ -1,0 +1,110 @@
+[
+    [
+        "\\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}",
+        "documentclass",
+        "lipics-v2021",
+        [
+            "lipics-v2021"
+        ],
+        [
+            "a4paper",
+            "UKenglish",
+            "cleveref",
+            "autoref",
+            "thm-restate"
+        ]
+    ],
+    [
+        "\\title{Dummy title}",
+        "title",
+        "Dummy title",
+        [
+            "Dummy title"
+        ],
+        []
+    ],
+    [
+        "\\author{Jane {Open Access}}{Dummy University Computing Laboratory, [optional: Address], Country \\and My second affiliation, Country \\and \\url{http:\/\/www.myhomepage.edu} }{johnqpublic@dummyuni.org}{https:\/\/orcid.org\/0000-0002-1825-0097}{(Optional) author-specific funding acknowledgements}",
+        "author",
+        "Jane {Open Access}",
+        [
+            "Jane {Open Access}",
+            "Dummy University Computing Laboratory, [optional: Address], Country \\and My second affiliation, Country \\and \\url{http:\/\/www.myhomepage.edu} ",
+            "johnqpublic@dummyuni.org",
+            "https:\/\/orcid.org\/0000-0002-1825-0097",
+            "(Optional) author-specific funding acknowledgements"
+        ],
+        []
+    ],
+    [
+        "\\author{Joan R. Public\\footnote{Optional footnote, e.g. to mark corresponding author}}\n{Department of Informatics, Dummy College, [optional: Address], Country}\n{joanrpublic@dummycollege.org}\n{[orcid]}\n{[funding]}",
+        "author",
+        "Joan R. Public\\footnote{Optional footnote, e.g. to mark corresponding author}",
+        [
+            "Joan R. Public\\footnote{Optional footnote, e.g. to mark corresponding author}",
+            "Department of Informatics, Dummy College, [optional: Address], Country",
+            "joanrpublic@dummycollege.org",
+            "[orcid]",
+            "[funding]"
+        ],
+        []
+    ],
+    [
+        "\\relatedversiondetails[linktext={opt. text shown instead of the URL}, cite=DBLP:books\/mk\/GrayR93]{Classification (e.g. Full Version, Extended Version, Previous Version}{URL to related version}",
+        "relatedversiondetails",
+        "Classification (e.g. Full Version, Extended Version, Previous Version",
+        [
+            "Classification (e.g. Full Version, Extended Version, Previous Version",
+            "URL to related version"
+        ],
+        [
+            "linktext={opt. text shown instead of the URL}",
+            "cite=DBLP:books\/mk\/GrayR93"
+        ]
+    ],
+    [
+        "\\supplementdetails[linktext={opt. text shown instead of the URL},\ncite=DBLP:books\/mk\/GrayR93,\nsubcategory={Description, Subcategory},\nswhid={Software Heritage Identifier}]{General Classification (e.g. Software, Dataset, Model, ...)}{URL to related version}",
+        "supplementdetails",
+        "General Classification (e.g. Software, Dataset, Model, ...)",
+        [
+            "General Classification (e.g. Software, Dataset, Model, ...)",
+            "URL to related version"
+        ],
+        [
+            "linktext={opt. text shown instead of the URL}",
+            "\ncite=DBLP:books\/mk\/GrayR93",
+            "\nsubcategory={Description, Subcategory}",
+            "\nswhid={Software Heritage Identifier}"
+        ]
+    ],
+    [
+        "\\supplementdetails[linktext={opt. text shown instead of the URL},\ncite=DBLP:books\/mk\/GrayR93,\nsubcategory={Description, Subcategory},\nswhid={Software Heritage Identifier}]\n{General Classification (e.g. Software, Dataset, Model, ...)}\n{URL to related version}",
+        "supplementdetails",
+        "General Classification (e.g. Software, Dataset, Model, ...)",
+        [
+            "General Classification (e.g. Software, Dataset, Model, ...)",
+            "URL to related version"
+        ],
+        [
+            "linktext={opt. text shown instead of the URL}",
+            "\ncite=DBLP:books\/mk\/GrayR93",
+            "\nsubcategory={Description, Subcategory}",
+            "\nswhid={Software Heritage Identifier}"
+        ]
+    ],
+    [
+        "\\supplementdetails[linktext = {With additional commas, and braces \\\"{u}},\ncite={test}, caption=bla, target={brain,,}]\n{General Classification (e.g. Software, Dataset, Model, ...)}\n{URL to related version}",
+        "supplementdetails",
+        "General Classification (e.g. Software, Dataset, Model, ...)",
+        [
+            "General Classification (e.g. Software, Dataset, Model, ...)",
+            "URL to related version"
+        ],
+        [
+            "linktext = {With additional commas, and braces \\\"{u}}",
+            "\ncite={test}",
+            "caption=bla",
+            "target={brain,,}"
+        ]
+    ]
+]

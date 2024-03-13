@@ -1,0 +1,72 @@
+\documentclass[a4paper,UKenglish,cleveref, autoref, thm-restate]{lipics-v2021}
+
+\title{Dummy title}
+
+% macro with several arguments
+\author{Jane {Open Access}}{Dummy University Computing Laboratory, [optional: Address], Country \and My second affiliation, Country \and \url{http://www.myhomepage.edu} }{johnqpublic@dummyuni.org}{https://orcid.org/0000-0002-1825-0097}{(Optional) author-specific funding acknowledgements}%TODO mandatory, please use full name; only 1 author per \author macro; first two parameters are mandatory, other parameters can be empty. Please provide at least the name of the affiliation and the country. The full address is optional. Use additional curly braces to indicate the correct name splitting when the last name consists of multiple name parts.
+
+%macro with several arguments split over several lines
+\author{Joan R. Public\footnote{Optional footnote, e.g. to mark corresponding author}}
+{Department of Informatics, Dummy College, [optional: Address], Country}
+{joanrpublic@dummycollege.org}
+{[orcid]}
+{[funding]}
+
+% macro with options
+\ccsdesc[100]{\textcolor{red}{Replace ccsdesc macro with valid one}}
+
+% empty macro
+\category{}
+
+% several options
+\relatedversiondetails[linktext={opt. text shown instead of the URL}, cite=DBLP:books/mk/GrayR93]{Classification (e.g. Full Version, Extended Version, Previous Version}{URL to related version}
+
+% several options split to several lines
+\supplementdetails[linktext={opt. text shown instead of the URL},
+cite=DBLP:books/mk/GrayR93,
+subcategory={Description, Subcategory},
+swhid={Software Heritage Identifier}]{General Classification (e.g. Software, Dataset, Model, ...)}{URL to related version} %linktext, cite, and subcategory are optional
+
+\supplementdetails[linktext={opt. text shown instead of the URL},
+cite=DBLP:books/mk/GrayR93,
+subcategory={Description, Subcategory},
+swhid={Software Heritage Identifier}]
+{General Classification (e.g. Software, Dataset, Model, ...)}
+{URL to related version}
+
+\supplementdetails[linktext = {With additional commas, and braces \"{u}},
+cite={test}, caption=bla, target={brain,,}]
+{General Classification (e.g. Software, Dataset, Model, ...)}
+{URL to related version}
+
+
+\begin{document}
+
+\maketitle
+
+%TODO mandatory: add short abstract of the document
+\begin{abstract}
+Lorem ipsum dolor sit amet, consectetur adipiscing elit. Praesent convallis orci arcu, eu mollis dolor. Aliquam eleifend suscipit lacinia. Maecenas quam mi, porta ut lacinia sed, convallis ac dui. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse potenti.
+\end{abstract}
+
+\section{Typesetting instructions -- Summary}
+\label{sec:typesetting-summary}
+
+LIPIcs is a series of open access high-quality conference proceedings across all fields in informatics established in cooperation with Schloss Dagstuhl.
+In order to do justice to the high scientific quality of the conferences that publish their proceedings in the LIPIcs series, which is ensured by the thorough review process of the respective events, we believe that LIPIcs proceedings must have an attractive and consistent layout matching the standard of the series.
+Moreover, the quality of the metadata, the typesetting and the layout must also meet the requirements of other external parties such as indexing service, DOI registry, funding agencies, among others. The guidelines contained in this document serve as the baseline for the authors, editors, and the publisher to create documents that meet as many different requirements as possible.
+
+Please comply with the following instructions when preparing your article for a LIPIcs proceedings volume.
+\paragraph*{Minimum requirements}
+
+\begin{itemize}
+\item Use pdflatex and an up-to-date \LaTeX{} system.
+\item Use further \LaTeX{} packages and custom made macros carefully and only if required.
+\item Use the provided sectioning macros: \verb+\section+, \verb+\subsection+, \verb+\subsubsection+, \linebreak \verb+\paragraph+, \verb+\paragraph*+, and \verb+\subparagraph*+.
+\item Provide suitable graphics of at least 300dpi (preferably in PDF format).
+\item Use BibTeX and keep the standard style (\verb+plainurl+) for the bibliography.
+\item Please try to keep the warnings log as small as possible. Avoid overfull \verb+\hboxes+ and any kind of warnings/errors with the referenced BibTeX entries.
+\item Use a spellchecker to correct typos.
+\end{itemize}
+
+\end{document}

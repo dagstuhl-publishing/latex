@@ -1,0 +1,45 @@
+{
+  "authors": [
+    {
+      "name": "Michael Didas",
+      "email": "michael.didas@dagstuhl.de",
+      "role": "developer"
+    },
+    {
+      "name": "Melanie Steffeck",
+      "email": "steffeck@gmail.com",
+      "role": "developer"
+    },
+    {
+      "name": "Michael Wagner",
+      "email": "michael.wagner@dagstuhl.de",
+      "role": "developer"
+    }
+  ],
+  "autoload": {
+    "psr-4": {
+      "Dagstuhl\\Latex\\": "src/",
+      "Dagstuhl\\Tests\\Latex\\": "tests/"
+    }
+  },
+  "description": "A library for handling LaTeX files (parsing/manipulating/extracting metadata).",
+  "keywords": [
+    "LaTeX",
+    "LaTeX-to-UTF8 conversion",
+    "metadata"
+  ],
+  "license": "GPL-2.0-or-later",
+  "name": "dagstuhl/latex",
+  "readme": "README.md",
+  "require": {
+    "php": "^8.1",
+    "ext-mbstring": "*",
+    "ext-simplexml": "*",
+    "ext-json": "*"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "9.3.*"
+  },
+  "type": "library",
+  "time": "2020-08-24"
+}
