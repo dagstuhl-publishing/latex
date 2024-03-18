@@ -2,8 +2,8 @@
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Dagstuhl\Tests\Latex\LatexCommandTest;
-use Dagstuhl\Tests\Latex\LatexMacrosAndEnvironmentsTest;
+use Dagstuhl\Latex\Tests\LatexCommandTest;
+use Dagstuhl\Latex\Tests\LatexMacrosAndEnvironmentsTest;
 
 die('script is locked - Please unlock manually, if you want to overwrite expected test data.');
 

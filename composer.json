@@ -18,8 +18,12 @@
   ],
   "autoload": {
     "psr-4": {
-      "Dagstuhl\\Latex\\": "src/",
-      "Dagstuhl\\Tests\\Latex\\": "tests/"
+      "Dagstuhl\\Latex\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Dagstuhl\\Latex\\Tests\\": "tests/"
     }
   },
   "description": "A library for handling LaTeX files (parsing/manipulating/extracting metadata).",

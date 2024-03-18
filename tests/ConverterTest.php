@@ -1,6 +1,6 @@
 <?php
 
-namespace Dagstuhl\Tests\Latex;
+namespace Dagstuhl\Latex\Tests;
 
 use Dagstuhl\Latex\Strings\MetadataString;
 use Dagstuhl\Latex\Utilities\Filesystem;
