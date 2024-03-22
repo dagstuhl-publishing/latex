@@ -23,22 +23,20 @@ abstract class Converter
     protected static function loadMaps(): void
     {
         // self::_loadLatexToUtf8Map();
-        self::loadMap(self::MAP_LATEX_TO_UTF8, Filesystem::resourcePath('charsets/latex-to-utf8.txt'));
-        self::loadMap(self::MAP_UTF8_TO_LATEX, Filesystem::resourcePath('charsets/utf8-to-latex.txt'));
-        self::loadMap(self::MAP_LATEX_TO_ASCII, Filesystem::resourcePath('charsets/latex-to-ascii.txt'), '|');
-        self::loadMap(self::MAP_UTF8_TO_LATIN1, Filesystem::resourcePath('charsets/utf8-to-latin1.txt'), '|');
-        self::loadMap(self::MAP_LATEX_MATH_TO_UTF8, Filesystem::resourcePath('charsets/latex-math-to-utf8.txt'), ';', true);
-        self::loadMap(self::MAP_UTF8_TO_ASCII, Filesystem::resourcePath('charsets/utf8-to-ascii.txt'));
+        self::loadMap(self::MAP_LATEX_TO_UTF8, 'charsets/latex-to-utf8.txt');
+        self::loadMap(self::MAP_UTF8_TO_LATEX, 'charsets/utf8-to-latex.txt');
+        self::loadMap(self::MAP_LATEX_TO_ASCII, 'charsets/latex-to-ascii.txt', '|');
+        self::loadMap(self::MAP_UTF8_TO_LATIN1, 'charsets/utf8-to-latin1.txt', '|');
+        self::loadMap(self::MAP_LATEX_MATH_TO_UTF8, 'charsets/latex-math-to-utf8.txt', ';', true);
+        self::loadMap(self::MAP_UTF8_TO_ASCII, 'charsets/utf8-to-ascii.txt');
     }
 
     private static function _loadLatexToUtf8Map(): void
     {
-        $path = Filesystem::resourcePath('charsets/specialchars.xml');
-
-        $file = Filesystem::get($path);
+        $file = Filesystem::getResource('charsets/specialchars.xml');
 
         if (empty($file)) {
-            echo 'ERROR: empty or non-existent file '.$path;
+            echo 'ERROR: empty or non-existent file charsets/specialchars.xml';
             exit();
         }
 
@@ -92,7 +90,7 @@ abstract class Converter
 
     private static function loadMap(string $name, string $path, string $separator = ';', bool $trim = false): void
     {
-        $file = Filesystem::get($path);
+        $file = Filesystem::getResource($path);
 
         if (empty($file)) {
             echo 'ERROR: empty or non-existent file: '.$path;

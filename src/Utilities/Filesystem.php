@@ -117,16 +117,42 @@ abstract class Filesystem
             : $path;
     }
 
-    public static function resourcePath(?string $path = ''): string
+    public static function getResource(?string $path = ''): string
     {
+        $contents = '';
+
         $path = preg_replace('/^\\\\/', '', $path);
 
-        $path = (!function_exists('config') OR config('lzi.latex.paths.resources') === NULL)
-            ? __DIR__.'/../../resources/'.$path
-            : config('lzi.latex.paths.resources').'/'.$path;
+        // allows to read resources from laravel storage
+        if (
+            function_exists('config')
+            AND config('lzi.latex.paths.resources') !== NULL
+            AND class_exists('\Storage')
+        ) {
+            $path = config('lzi.latex.paths.resources').'/'.$path;
+            $path = str_replace('//', '/', $path);
 
-        $path = str_replace('//', '/', $path);
+            try {
+                $contents = \Storage::get($path) ?? '';
+            }
+            catch(\Exception $ex) { }
+        }
+        // default: read from local resources folder
+        else {
+            $path = __DIR__.'/../../resources/'.$path;
+            $path = str_replace('//', '/', $path);
 
-        return preg_replace('#/$#', '', $path);
+            try {
+                $contents = @file_get_contents($path);
+
+                // file_get_contents returns false on error
+                if ($contents === false) {
+                    $contents = '';
+                }
+            }
+            catch(\Exception $ex) { }
+        }
+
+        return $contents;
     }
 }
