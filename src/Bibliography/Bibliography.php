@@ -572,7 +572,6 @@ class Bibliography
         $this->bibEntries = [];
 
         foreach($this->getBibFiles() as $bibFile) {
-            var_dump($bibFile->getPath());
             $this->bibEntries = array_merge($this->bibEntries, $bibFile->getAllBibEntries());
         }
 

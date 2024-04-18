@@ -31,63 +31,6 @@ abstract class Converter
         self::loadMap(self::MAP_UTF8_TO_ASCII, 'charsets/utf8-to-ascii.txt');
     }
 
-    private static function _loadLatexToUtf8Map(): void
-    {
-        $file = Filesystem::getResource('charsets/specialchars.xml');
-
-        if (empty($file)) {
-            echo 'ERROR: empty or non-existent file charsets/specialchars.xml';
-            exit();
-        }
-
-        // ------------ UTF8 to LATEX and vice versa ---------------
-
-        $xml = simplexml_load_string($file);
-
-        $from = [];
-        $to = [];
-
-        foreach ($xml->xpath('//char') as $key => $char) {
-
-            $code = $char[0]->attributes()->code;
-            $utf8Char = html_entity_decode('&#' . $code . ';', ENT_NOQUOTES, 'UTF-8');
-
-            foreach ($char[0]->bibcode as $tex) {
-
-                $from[] = $utf8Char;
-                $to[] = (string)$tex;
-
-                $matches = [];
-                if (preg_match('/\\\\(.{1})\{(.{1})\}/', $tex, $matches) === 1) {
-                    $from[] = $utf8Char;
-                    $to[] = '\\' . $matches[1] . $matches[2];   // add \'{a} => \'a
-
-                    if ($matches[1] === '"') {              // add {\"a} => ä (and so on)
-                        $from[] = $utf8Char;
-                        $to[] = '{\\' . $matches[1] . $matches[2] . '}';
-                    }
-                }
-
-                $from[] = $utf8Char;
-                $to[] = '{' . preg_replace('/ $/', '', $tex) . '}';
-            }
-        }
-
-        self::$maps[self::MAP_UTF8_TO_LATEX] = new CharMap($from, $to);
-        self::$maps[self::MAP_LATEX_TO_UTF8] = new CharMap($to, $from, '\Dagstuhl\Latex\Strings\Converter::preLatexToUtf8Conversion');
-
-        $exceptions = ['\\', '{', '}', '~'];
-        foreach ($exceptions as $exception) {
-
-            while (array_search($exception, $from) !== false) {
-                $key = array_search($exception, $from);
-                unset($from[$key]);
-                unset($to[$key]);
-            }
-        }
-
-    }
-
     private static function loadMap(string $name, string $path, string $separator = ';', bool $trim = false): void
     {
         $file = Filesystem::getResource($path);

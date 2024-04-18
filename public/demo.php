@@ -18,6 +18,14 @@ foreach($authors as $author) {
     var_dump($author->getArguments());
 }
 
+// read bib file
+
+$bibliography = $latexFile->getBibliography();
+
+foreach($bibliography->getBibEntries() as $bibEntry) {
+    var_dump($bibEntry->getFields());
+}
+
 // read the whole set of metadata as specified in style description src/Styles/StyleDescriptions/LIPIcs_OASIcs_v2021.php
 
 $reader = $latexFile->getMetadataReader();
