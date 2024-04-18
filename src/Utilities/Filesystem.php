@@ -126,10 +126,10 @@ abstract class Filesystem
         // allows to read resources from laravel storage
         if (
             function_exists('config')
-            AND config('lzi.latex.paths.resources') !== NULL
+            AND config('latex.paths.resources') !== NULL
             AND class_exists('\Storage')
         ) {
-            $path = config('lzi.latex.paths.resources').'/'.$path;
+            $path = config('latex.paths.resources').'/'.$path;
             $path = str_replace('//', '/', $path);
 
             try {

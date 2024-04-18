@@ -31,7 +31,7 @@ class LatexStyle
         $this->name = $name;
 
         if (function_exists('config')) {
-            $registry = config('lzi.latex.styles.registry');
+            $registry = config('latex.styles.registry');
         }
 
         if (empty($registry)) {

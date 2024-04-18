@@ -1,7 +1,7 @@
 # The Dagstuhl LaTeX project
 
-The aim of the Dagstuhl LaTeX project is to provide a simply-to-use php-interface for parsing metadata from LaTeX files.
-Since the metadata information comes as the contents of style-specific LaTeX macros (e.g. `\title{...}`, `\author{...}`), or environments (e.g. `\begin{abstract}...\end{abstract}`),
+This project is a php class framework developed and used by Dagstuhl Publishing for handling LaTeX submissions on the Dagstuhl Submission Server.
+A large part is about parsing metadata from LaTeX files. Since the metadata information comes as the content of style-specific LaTeX macros (e.g. `\title{...}`, `\author{...}`), or environments (e.g. `\begin{abstract}...\end{abstract}`),
 we provide... 
 - some generic (low-level) methods for parsing macros/environments from the LaTeX source code
 - a string-conversion support for LaTeX <-> UTF8
@@ -9,6 +9,8 @@ we provide...
 (these two may be useful in a wider context) and
   
 - a customizable metadata reader which collects the metadata contained in a LaTeX file and converts it into a structured collection of UTF8-encoded strings.
+
+Dagstuhl Publishing removes all comments from LaTeX files first, so the methods work best with comment-free LaTeX code.
 
 Installation: `composer require dagstuhl/latex`
 
@@ -86,4 +88,33 @@ $reader = $latexFile->getMetadataReader();
 $metadata = $reader->getMetadata();
 // array of metadata - structured and converted as specified in the StyleDescription file
 ```
- 
+
+## 4. Integration into laravel projects
+
+When used inside a laravel project, the `Storage` class is used for interactions with files (driver: local).
+To interact with your LaTeX installation (e.g., via the `LatexCompiler` class), you must add a config file named `config/latex.php`
+provide the following values:
+```php
+return [
+    'paths' => [
+        'latex-bin' => env('LATEX_BIN'),        // path to your pdflatex binary
+        'bibtex-bin' => env('BIBTEX_BIN'),      // path to your bibtex binary
+        'pdf-info-bin' => env('PDF_INFO_BIN'),  // path to your pdf-info binary
+        'resources' => env('LATEX_RESOURCES_FOLDER'), // resources folder (in case you want to use your own resources) 
+    ],
+    'styles' => [
+        'registry' => \Your\Local\StylesRegistry::class // in case you want to use a custom styles registry
+    ]
+];
+```
+Outside a laravel project, write a global `config` function like so:
+```php
+function config(): array
+{
+    return [ 
+        'latex.paths.latex-bin' => 'path/to/pdflatex binary',
+        'latex.paths.bibtex-bin' => 'path/to/bibtex binary',
+        ...
+    ];
+}
+```

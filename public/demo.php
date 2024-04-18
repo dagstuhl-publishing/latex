@@ -4,6 +4,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 
+
 $latexFile = new LatexFile('../resources/latex-examples/lipics-authors-v2021.1.3/lipics-v2021-sample-article.tex');
 
 // read the title

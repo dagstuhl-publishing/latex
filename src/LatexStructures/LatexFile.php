@@ -73,7 +73,7 @@ class LatexFile extends LatexString
     {
         $pageCount = 0;
 
-        $cmd = config('lzi.latex.paths.pdf-info-bin').' "'.Filesystem::storagePath($this->getPath('pdf')).'"';
+        $cmd = config('latex.paths.pdf-info-bin').' "'.Filesystem::storagePath($this->getPath('pdf')).'"';
 
         exec ($cmd, $output);
 

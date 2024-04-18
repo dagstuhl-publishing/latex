@@ -52,7 +52,7 @@ class LatexCompiler
         }
 
         $this->setEnvironmentVariables();
-        exec(config('lzi.latex.paths.latex-bin'). ' --version', $msg);
+        exec(config('latex.paths.latex-bin'). ' --version', $msg);
 
         self::$version = $msg[0] ?? 'pdflatex';
 
@@ -96,17 +96,17 @@ class LatexCompiler
             $this->latexFile->setContents($replacement);
             $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
 
-            $versionPath = config('lzi.latex.paths.www-data-path-versions');
-            $oldVersions = config('lzi.latex.old-versions');
+            $versionPath = config('latex.paths.www-data-path-versions');
+            $oldVersions = config('latex.old-versions');
             $supportedVersions = !empty($oldVersions)
                     ? explode(';', $oldVersions)
                     : [];
 
             $wwwDataPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
                 ? str_replace('{version}', $selectedVersion, $versionPath)
-                : config('lzi.latex.paths.www-data-path');
+                : config('latex.paths.www-data-path');
 
-            $wwwDataHome = config('lzi.latex.paths.www-data-home');
+            $wwwDataHome = config('latex.paths.www-data-home');
         }
 
         if ($wwwDataPath !== NULL) {
@@ -138,12 +138,12 @@ class LatexCompiler
         $texFilename = '"'.$this->texFilename.'"';
 
         $latexCommand = $changeDirectory. ' && '.
-            config('lzi.latex.paths.latex-bin').
+            config('latex.paths.latex-bin').
             ' -interaction=nonstopmode '.
             $this->getShellEscapeParameter().
             $texFilename;
 
-        $bibtexCommand = $changeDirectory. ' && '.config('lzi.latex.paths.bibtex-bin').' '.$texFilename;
+        $bibtexCommand = $changeDirectory. ' && '.config('latex.paths.bibtex-bin').' '.$texFilename;
 
         try {
 
