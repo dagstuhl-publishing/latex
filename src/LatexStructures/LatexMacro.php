@@ -16,7 +16,7 @@ class LatexMacro extends LatexString
         'subsubsection', 'subsubsection*',
         'paragraph', 'paragraph*',
         'subparagraph', 'subparagraph*',
-        'dutchPrefix'
+        'dutchPrefix', 'noopsort'
     ];
 
     private string $name;
