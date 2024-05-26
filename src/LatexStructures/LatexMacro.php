@@ -19,6 +19,9 @@ class LatexMacro extends LatexString
         'dutchPrefix', 'noopsort'
     ];
 
+    const REPLACEMENT_LEFT_CURLY_BRACKET = '__LeFt__CuRlY__bRaCkEt__';
+    const REPLACEMENT_RIGHT_CURLY_BRACKET = '__RiGhT__CuRlY__bRaCkEt__';
+
     private string $name;
     private array $options;
     private array $arguments;
@@ -131,7 +134,12 @@ class LatexMacro extends LatexString
         $value = '';
         $height = 1;
 
-        $pos = $offset;
+        $string = substr($string, $offset);
+
+        $string = str_replace('\{', self::REPLACEMENT_LEFT_CURLY_BRACKET, $string);
+        $string = str_replace('\}', self::REPLACEMENT_RIGHT_CURLY_BRACKET, $string);
+
+        $pos = 0;
         $nextChar = substr($string, $pos, 1);
         $stringLength = strlen($string);
 
@@ -168,7 +176,15 @@ class LatexMacro extends LatexString
             }
         }
 
-        $argEndsAt = $pos - 1;
+        $argEndsAt = $offset + $pos - 1;
+
+        $correctionLeft = strlen(self::REPLACEMENT_LEFT_CURLY_BRACKET) - strlen('\{');
+        $argEndsAt -= substr_count($value, self::REPLACEMENT_LEFT_CURLY_BRACKET) * $correctionLeft;
+        $correctionRight = strlen(self::REPLACEMENT_RIGHT_CURLY_BRACKET) - strlen('\}');
+        $argEndsAt -= substr_count($value,self::REPLACEMENT_RIGHT_CURLY_BRACKET) * $correctionRight;
+
+        $value = str_replace(self::REPLACEMENT_LEFT_CURLY_BRACKET, '\{', $value);
+        $value = str_replace(self::REPLACEMENT_RIGHT_CURLY_BRACKET, '\}',$value);
 
         return explode('}#-#-#{',$value);
     }
@@ -348,7 +364,7 @@ class LatexMacro extends LatexString
                         $argumentBold = str_replace($texString, $boldTexString, $argumentBold);
                     }
                 }
-                
+
                 $comment = '%'.$this->getMacroString($argumentBold)."\n";
             }
             else {
