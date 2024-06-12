@@ -8,7 +8,7 @@ use Dagstuhl\Latex\Metadata\MetadataReader;
 
 class DagMan_v2021 extends LIPIcs_OASIcs_v2021
 {
-    public static function getMetadataItems()
+    public static function getMetadataItems(): array
     {
         $metadataItems = parent::getMetadataItems();
 
