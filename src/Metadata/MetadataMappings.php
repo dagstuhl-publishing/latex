@@ -48,13 +48,15 @@ abstract class MetadataMappings
         $subtitle = $latexFile->getMacro('subtitle');
 
         if ($subtitle !== NULL) {
-            $subtitle = $subtitle->getArgument();
+            $subtitle = trim($subtitle->getArgument());
 
-            preg_match('/\\\\def\\\\subtitleseperator{(.*)}/U', $latexFile->getContents(), $matches);
-            $separator = $matches[1] ?? ': ';
+            if ($subtitle !== '') {
+                preg_match('/\\\\def\\\\subtitleseperator{(.*)}/U', $latexFile->getContents(), $matches);
+                $separator = $matches[1] ?? ': ';
 
-            $title = $title.$separator.$subtitle;
-            $title = self::reviseMacroV1($title, $title, $latexFile);
+                $title = $title . $separator . $subtitle;
+                $title = self::reviseMacroV1($title, $title, $latexFile);
+            }
         }
 
         return $title;
