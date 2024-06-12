@@ -136,8 +136,8 @@ class LatexMacro extends LatexString
 
         $string = substr($string, $offset);
 
-        $string = str_replace('\{', self::REPLACEMENT_LEFT_CURLY_BRACKET, $string);
-        $string = str_replace('\}', self::REPLACEMENT_RIGHT_CURLY_BRACKET, $string);
+        $string = preg_replace('/([^\\\\])\\\\{/', '$1'.self::REPLACEMENT_LEFT_CURLY_BRACKET, $string);
+        $string = preg_replace('/([^\\\\])\\\\\}/', '$1'.self::REPLACEMENT_RIGHT_CURLY_BRACKET, $string);
 
         $pos = 0;
         $nextChar = substr($string, $pos, 1);
