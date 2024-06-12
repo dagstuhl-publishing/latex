@@ -415,6 +415,10 @@ class Bibliography
 
             if ($url !== NULL) {
 
+                // remove leading and trailing curly braces
+                $url = preg_replace('/^\{*/', '', $url);
+                $url = preg_replace('/\}*$/', '', $url);
+
                 if (StringHelper::endsWith($cleanEntry,$url.'.')) {
                     $cleanEntry = str_replace($url.'.','', $cleanEntry);
                 }
