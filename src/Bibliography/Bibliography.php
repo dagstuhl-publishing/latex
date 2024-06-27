@@ -292,8 +292,10 @@ class Bibliography
 
             $latexString = new LatexString($entry);
 
-            foreach ($latexString->getMacros('bibitem') as $macro) {
+            $bibKey = NULL;
 
+            // bibitem should actually occur exactly once
+            foreach ($latexString->getMacros('bibitem') as $macro) {
                 $bibKey = $macro->getArgument();
                 $entry = str_replace($macro->getSnippet(), '', $entry);
             }
@@ -485,7 +487,8 @@ class Bibliography
                 'order' => $key,
                 'text' => $cleanEntry,
                 'url' => $url,
-                'urlType' => $urlType
+                'urlType' => $urlType,
+                'bibKey' => $bibKey
             ];
         }
 
