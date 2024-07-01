@@ -401,10 +401,12 @@ class LatexFile extends LatexString
         foreach($snippets as $ifnum) {
             preg_match('/\\\\ifnum(.*)[\=\>\<]/U', $ifnum, $match);
 
-            $ifs[] = [
-                'name' => '\ifnum'.$match[1] ?? 'unknown',
-                'snippet' => $ifnum
-            ];
+            if (isset($match[1])) {
+                $ifs[] = [
+                    'name' => '\ifnum' . $match[1],
+                    'snippet' => $ifnum
+                ];
+            }
         }
 
         return $ifs;
