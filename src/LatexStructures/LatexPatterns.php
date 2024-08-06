@@ -30,7 +30,7 @@ abstract class LatexPatterns
 
     // names of code environments
     const CODE_ENVIRONMENT_NAMES = [
-        'alltt', 'abscode', 'allinlustre', 'allinlustre-figure', 'AnerisPLsmall',
+        'alltt', 'abscode', 'allinlustre', 'allinlustre-figure', 'AnerisPLsmall', 'ainflisting',
         'bull', 'BVerbatim',
         'chorlisting', 'chorallisting', 'code', 'codeblock', 'codeblockcss', 'codejava', 'coq', 'coqlisting', 'clang-figure', 'clang',
         'excerpt', 'excerpt\*', 'easycrypt',
@@ -38,11 +38,11 @@ abstract class LatexPatterns
         'granule', 'gql\*', 'haskell', 'Highlighting',
         'InlineVerbatim', 'isabelle',
         'javacode', 'javan', 'javalisting',
-        'listingLemma', 'listingJolie', 'lstlisting', 'longcode',
+        'listingLemma', 'listingJolie', 'lstlisting', 'longcode', 'langlisting', 'leanlisting',
         'minted', 'mcode', 'mzn', 'myequations',
-        'numcodejava', 'nicehaskell',
+        'numcodejava', 'nicehaskell', 'numpylisting', 'numberedprogram',
         'ocalm', 'OCAMLLISTING',
-        'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO',
+        'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO', 'pseudolisting',
         'rustlisting',
         'scalalisting',
         'VerbatimFigure'
