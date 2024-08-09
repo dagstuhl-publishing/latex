@@ -22,6 +22,7 @@ class Bibliography
     const BIB_STYLE_PLAIN = 'plain';
 
     private LatexFile $latexFile;
+    private string $bblPath;
     private BBlFile $bblFile;
 
     /** @var BibFile[] */
@@ -32,10 +33,11 @@ class Bibliography
     /** @var BibEntry[]|null */
     private ?array $bibEntries = NULL;
 
-    public function __construct(LatexFile $latexFile)
+    public function __construct(LatexFile $latexFile, ?string $bblPath = null)
     {
         $this->latexFile = $latexFile;
-        $this->bblFile = new BblFile($latexFile->getPath('bbl'));
+        $this->bblPath = $bblPath ?? $latexFile->getPath('bbl');
+        $this->bblFile = new BblFile($this->bblPath);
         $this->bibFiles = [];
     }
 
@@ -218,7 +220,7 @@ class Bibliography
 
         $contents = '';
 
-        $path = $this->latexFile->getPath('bbl');
+        $path = $this->bblPath;
 
         try {
             $contents = Filesystem::get($path) ?? '';

@@ -103,9 +103,9 @@ class LatexFile extends LatexString
         $this->setValue($newContents);
     }
 
-    public function getBibliography(): Bibliography
+    public function getBibliography(?string $bblPath = null): Bibliography
     {
-        return new Bibliography($this);
+        return new Bibliography($this, $bblPath);
     }
 
     public function getStyle(): LatexStyle
