@@ -449,7 +449,7 @@ class LatexFile extends LatexString
                 $line = trim($line);
                 $lines[$key] = $line;
 
-                if (StringHelper::startsWith($line, '@') and str_contains($line, $identifier)) {
+                if (StringHelper::startsWith($line, '@') AND str_contains($line, '{'.$identifier.',')) {
                     $found = true;
                 }
 
