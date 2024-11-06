@@ -1,3 +1,6 @@
+[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:4f5b580a8d88f40862289015dd0948e4033fae4e/)](https://archive.softwareheritage.org/swh:1:dir:4f5b580a8d88f40862289015dd0948e4033fae4e;origin=https://github.com/dagstuhl-publishing/latex;visit=swh:1:snp:6fa48f1a4ca81b1961dd212ab11328acf152552a;anchor=swh:1:rev:e3b01d079be7a2b7dc48bcb133d67dedbf16a1ea)
+
+
 # The Dagstuhl LaTeX project
 
 This project is a php class framework developed and used by Dagstuhl Publishing for handling LaTeX submissions on the Dagstuhl Submission Server.
