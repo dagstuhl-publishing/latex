@@ -26,7 +26,7 @@ class LatexLabel
 
         $tmp = new LatexString('\\'.self::TMP_LABEL_IDENTIFIER.$auxLabelRaw);
         $label = $tmp->getMacro(self::TMP_LABEL_IDENTIFIER);
-        $args = $label->getArguments();
+        $args = $label?->getArguments();
 
         if (StringHelper::endsWith($key, '@cref')) {
             $this->type = self::LABEL_TYPE_CREF;
@@ -45,7 +45,7 @@ class LatexLabel
             $this->counter = $args[0] ?? self::UNKNOWN;
             $this->page = $args[1] ?? self::UNKNOWN;
             $this->text = $args[2] ?? self::UNKNOWN;
-            preg_match('/(.*)\./U', $args[3], $match);
+            preg_match('/(.*)\./U', $args[3] ?? '', $match);
 
             $this->referencedStructure = isset($match[1])
                 ? ucfirst($match[1])
