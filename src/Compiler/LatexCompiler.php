@@ -8,18 +8,12 @@ use phpDocumentor\Reflection\Types\Null_;
 
 class LatexCompiler
 {
-    const TEMP_FILE_EXTENSIONS = [ 'vtc', 'aux', 'log' ];
-
-    const LABELS_CHANGED = 'Label(s) may have changed. Rerun';
-    const EXTRA_PAGE = 'Temporary extra page added at the end. Rerun to get it removed.';
-
     const FATAL_ERROR = 100;
 
     protected LatexFile $latexFile;
 
     protected string $texFilename;
     protected string $workingDir;
-    protected string $relativeWorkingDir;
 
     protected array $latexOutput = [];
     protected array $bibtexOutput = [];
@@ -29,11 +23,12 @@ class LatexCompiler
     protected ?int $bibtexExitCode = NULL;
 
     protected static ?string $version = NULL;
+    protected string $profile;
 
     /**
      * LatexCompiler constructor.
      */
-    public function __construct(LatexFile $latexFile)
+    public function __construct(LatexFile $latexFile, string $profile)
     {
         $texFilePath = $latexFile->getPath();
 
@@ -42,7 +37,7 @@ class LatexCompiler
         $this->latexFile = $latexFile;
         $this->texFilename = preg_replace('/\.tex$/', '', basename($texFilePath));
         $this->workingDir = Filesystem::storagePath($relativeWorkingDir);
-        $this->relativeWorkingDir = $relativeWorkingDir;
+        $this->profile = $profile;
     }
 
     public function getLatexVersion(): string
@@ -57,17 +52,6 @@ class LatexCompiler
         self::$version = $msg[0] ?? 'pdflatex';
 
         return self::$version;
-    }
-
-    public function clearTempFiles(): void
-    {
-        $texFilename = $this->relativeWorkingDir.$this->texFilename;
-
-        foreach(self::TEMP_FILE_EXTENSIONS as $ext) {
-            $path = $texFilename.'.'.$ext;
-
-            Filesystem::delete($path);
-        }
     }
 
     private function getShellEscapeParameter(): string
@@ -85,8 +69,17 @@ class LatexCompiler
         return $shellEscape;
     }
 
-    private function setEnvironmentVariables(): void
+    private function setEnvironmentVariables(array $options= []): void
     {
+        $options['latexMode'] = $options['latexMode'] ?? 'full';
+        $options['bibMode'] = $options['bibMode'] ?? 'bibtex';
+
+        putenv('WORK_DIR='.$this->workingDir);
+        putenv('FILE_NAME='.$this->texFilename);
+        putenv('LATEX_MODE='.$options['latexMode']);
+        putenv('BIB_MODE='.$options['bibMode']);
+        putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter());
+
         $wwwDataPath = NULL;
         $wwwDataHome = NULL;
 
@@ -99,8 +92,8 @@ class LatexCompiler
             $versionPath = config('latex.paths.www-data-path-versions');
             $oldVersions = config('latex.old-versions');
             $supportedVersions = !empty($oldVersions)
-                    ? explode(';', $oldVersions)
-                    : [];
+                ? explode(';', $oldVersions)
+                : [];
 
             $wwwDataPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
                 ? str_replace('{version}', $selectedVersion, $versionPath)
@@ -109,80 +102,42 @@ class LatexCompiler
             $wwwDataHome = config('latex.paths.www-data-home');
         }
 
-        if ($wwwDataPath !== NULL) {
-            putenv('PATH='. $wwwDataPath);
+        if (!empty($wwwDataPath)) {
+            $wwwDataPath .= '/';
         }
+
+        putenv('PATH='.$wwwDataPath);
+        putenv('LATEX_BIN=pdflatex');
+        putenv('BIBTEX_BIN=bibtex');
 
         if ($wwwDataHome !== NULL) {
             putenv('HOME='. $wwwDataHome);
         }
     }
 
-    public function compile(): int
+    public function compile(array $options): int
     {
-        $this->setEnvironmentVariables();
-        $this->clearTempFiles();
+        $this->setEnvironmentVariables($options);
 
-        $texFilename = $this->relativeWorkingDir.$this->texFilename;
-        $bblFile = $texFilename.'.bbl';
-        $logFile = $texFilename.'.log';
-
-        if (Filesystem::exists($bblFile)) {
-            Filesystem::delete($bblFile.'.old');
-            Filesystem::move($bblFile, $bblFile . '.old');
-        }
-
-        $changeDirectory = 'cd '.$this->workingDir;
-
-        // put "..." around filename to handle special chars (like " ", "(", ...)
-        $texFilename = '"'.$this->texFilename.'"';
-
-        $latexCommand = $changeDirectory. ' && '.
-            config('latex.paths.latex-bin').
-            ' -interaction=nonstopmode '.
-            $this->getShellEscapeParameter().
-            $texFilename;
-
-        $bibtexCommand = $changeDirectory. ' && '.config('latex.paths.bibtex-bin').' '.$texFilename;
+        $profile = __DIR__.'/CompilationProfiles/'.$this->profile.'.sh';
 
         try {
+            exec($profile, $out);
+            $lastLine = $out[count($out)-1];
+            preg_match('/Last LaTeX exit code \[([0-9]*)], Last BibTeX exit code \[([0-9]*)]/', $lastLine, $matches);
 
-            exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+            $matches[1] = (int)$matches[1];
 
-            $output = implode("\n", $this->latexOutput);
-
-            // extra run on "Temporary extra page"-warning
-            if ($this->latexExitCode !== 0 AND str_contains($output, self::EXTRA_PAGE)) {
-                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+            if (($matches[2] ?? NULL) === '') {
+                $matches[2] = NULL;
             }
 
-            if ($this->latexExitCode !== 0) {
-                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+            if ($matches[2] !== NULL) {
+                $matches[2] = (int)$matches[2];
             }
 
-            $this->bibtexExitCode = 0;
-
-            if (count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0) {
-
-                exec($bibtexCommand, $this->bibtexOutput, $this->bibtexExitCode);
-
-                if ($this->bibtexExitCode !== 0 AND $this->bibtexExitCode !== 2) {
-                    return $this->bibtexExitCode;
-                }
-
-                exec($latexCommand);
-            }
-
-            Filesystem::delete($logFile);
-
-            exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-
-            if ($this->labelsChanged()) {
-                Filesystem::delete($logFile);
-
-                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-            }
-
+            $this->latexExitCode = $matches[1] ?? NULL;
+            $this->bibtexExitCode = $matches[2] ?? NULL;
         }
         catch(\Exception $ex) {
             $this->exceptionMessage = $ex;
@@ -230,15 +185,6 @@ class LatexCompiler
     public function getExceptionMessage(): string
     {
         return $this->exceptionMessage ?? '';
-    }
-
-    public function labelsChanged(): bool
-    {
-        $logLines = $this->getLatexLog();
-
-        $log = implode(' ', $logLines);
-
-        return stripos($log, self::LABELS_CHANGED) !== false;
     }
 
     public function getNumberOfPages(): int
