@@ -9,6 +9,8 @@ use Exception;
 
 class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
 {
+    protected LatexFile $latexFile;
+    
     protected ?string $version = NULL;
     protected ?int $latexExitCode;
     protected ?int $bibtexExitCode;
@@ -19,6 +21,10 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
     const MODE_LATEX_ONLY = 'latex-only';
     const MODE_BIBTEX_ONLY = 'bibtex-only';
 
+    public function __construct(LatexFile $latexFile)
+    {
+        $this->latexFile = $latexFile;
+    }
 
     private function getProfileCommand(): string
     {
@@ -34,11 +40,11 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
         return $out[0] ?? 'pdflatex';
     }
 
-    private function getShellEscapeParameter(LatexFile $latexFile): string
+    private function getShellEscapeParameter(): string
     {
         $shellEscape = '';
 
-        $latexContents = $latexFile->getContents();
+        $latexContents = $this->latexFile->getContents();
 
         if (str_contains($latexContents, '\begin{minted}')
             OR str_contains($latexContents, '\usepackage{minted}')
@@ -49,9 +55,9 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
         return $shellEscape;
     }
 
-    private function setEnvironmentVariables(LatexFile $latexFile, array $options= []): void
+    private function setEnvironmentVariables(array $options= []): void
     {
-        $bibMode = count($latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0
+        $bibMode = count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0
             ? 'bibtex'
             : 'none';
 
@@ -60,15 +66,15 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
 
         putenv('MODE='.$options['mode']);
         putenv('BIB_MODE='.$options['bibMode']);
-        putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter($latexFile));
+        putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter($this->latexFile));
 
         $wwwDataPath = NULL;
         $wwwDataHome = NULL;
 
         if (function_exists('config')) {
-            $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $latexFile->getContents());
-            $latexFile->setContents($replacement);
-            $selectedVersion = $latexFile->getMacro('useTexLiveVersion')?->getArgument();
+            $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $this->latexFile->getContents());
+            $this->latexFile->setContents($replacement);
+            $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
 
             $versionPath = config('latex.paths.www-data-path-versions');
             $oldVersions = config('latex.old-versions');
@@ -111,11 +117,11 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
     }
 
 
-    public function compile(LatexFile $latexFile, array $options = []): void
+    public function compile(array $options = []): void
     {
-        $this->setEnvironmentVariables($latexFile, $options);
+        $this->setEnvironmentVariables($options);
 
-        $absolutePath = Filesystem::storagePath($latexFile->getPath());
+        $absolutePath = Filesystem::storagePath($this->latexFile->getPath());
         $command = $this->getProfileCommand(). ' '. $absolutePath;
 
         exec($command, $out);

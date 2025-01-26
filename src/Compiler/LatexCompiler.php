@@ -31,7 +31,7 @@ class LatexCompiler
     )
     {
         $this->latexFile = $latexFile;
-        $this->compilationProfile = $compilationProfile ?? new PdfLatexBibtexLocalProfile();
+        $this->compilationProfile = $compilationProfile ?? new PdfLatexBibtexLocalProfile($latexFile);
         $this->logParser = $logParser ?? new DefaultLatexLogParser($latexFile);
     }
 
@@ -47,7 +47,7 @@ class LatexCompiler
     public function compile(array $options = []): int
     {
         try {
-            $this->compilationProfile->compile($this->latexFile, $options);
+            $this->compilationProfile->compile($options);
             $this->latexExitCode = $this->compilationProfile->getLatexExitCode();
             $this->bibtexExitCode = $this->compilationProfile->getBibtexExitCode();
         }

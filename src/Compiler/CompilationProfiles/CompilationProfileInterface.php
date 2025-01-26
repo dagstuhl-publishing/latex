@@ -6,7 +6,9 @@ use Dagstuhl\Latex\LatexStructures\LatexFile;
 
 interface CompilationProfileInterface
 {
-    public function compile(LatexFile $latexFile): void;
+    public function __construct(LatexFile $latexFile);
+
+    public function compile(): void;
 
     public function getLatexVersion(): string;
 
