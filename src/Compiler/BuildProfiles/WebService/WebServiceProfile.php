@@ -14,10 +14,10 @@ class WebServiceProfile extends BasicProfile implements BuildProfileInterface
 
     protected string $apiUrl;
 
-    public function __construct(LatexFile $latexFile = NULL, string $host = NULL)
+    public function __construct(LatexFile $latexFile = NULL, string $apiUrl = NULL)
     {
         parent::__construct($latexFile);
-        $this->apiUrl = config('latex.profiles.web-service.api-url') ?? $host;
+        $this->apiUrl = config('latex.profiles.web-service.api-url') ?? $apiUrl;
     }
 
     public function setApiUrl(string $apiUrl): void
