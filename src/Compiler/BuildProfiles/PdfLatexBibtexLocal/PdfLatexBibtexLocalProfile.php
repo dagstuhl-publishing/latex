@@ -98,7 +98,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
         exec($command, $out);
 
-        $this->profileOutput = array_merge([ 'Profile: PdfLatexBibtexLocal' ], $out);
+        $this->profileOutput = array_merge([ 'LaTex build profile: PdfLatexBibtexLocal' ], $out);
 
         $lastLine = $out[count($out)-1];
         list($this->latexExitCode, $this->bibtexExitCode) = $this->parseExitCodes($lastLine);

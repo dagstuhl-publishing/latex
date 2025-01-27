@@ -14,7 +14,7 @@ class LatexCompiler
     const FATAL_ERROR = 100;
 
     protected LatexFile $latexFile;
-    protected BuildProfileInterface $compilationProfile;
+    protected BuildProfileInterface $buildProfile;
     protected LogParserInterface $logParser;
 
     protected ?string $exceptionMessage = NULL;
@@ -24,21 +24,21 @@ class LatexCompiler
     protected ?string $latexVersion = NULL;
 
     public function __construct(
-        LatexFile             $latexFile,
-        BuildProfileInterface $compilationProfile = NULL,
-        LogParserInterface    $logParser = NULL
+        LatexFile $latexFile,
+        BuildProfileInterface $buildProfile = NULL,
+        LogParserInterface $logParser = NULL
     )
     {
         $this->latexFile = $latexFile;
-        $this->compilationProfile = $compilationProfile ?? new PdfLatexBibtexLocalProfile();
-        $this->compilationProfile->setLatexFile($latexFile);
+        $this->buildProfile = $buildProfile ?? new PdfLatexBibtexLocalProfile();
+        $this->buildProfile->setLatexFile($latexFile);
         $this->logParser = $logParser ?? new DefaultLatexLogParser($latexFile);
     }
 
     public function getLatexVersion(): string
     {
         if ($this->latexVersion === NULL) {
-            $this->latexVersion = $this->compilationProfile->getLatexVersion();
+            $this->latexVersion = $this->buildProfile->getLatexVersion();
         }
 
         return $this->latexVersion;
@@ -47,9 +47,9 @@ class LatexCompiler
     public function compile(array $options = []): int
     {
         try {
-            $this->compilationProfile->compile($options);
-            $this->latexExitCode = $this->compilationProfile->getLatexExitCode();
-            $this->bibtexExitCode = $this->compilationProfile->getBibtexExitCode();
+            $this->buildProfile->compile($options);
+            $this->latexExitCode = $this->buildProfile->getLatexExitCode();
+            $this->bibtexExitCode = $this->buildProfile->getBibtexExitCode();
 
             if ($this->latexExitCode === NULL) {
                 $this->latexExitCode = self::FATAL_ERROR;
@@ -95,7 +95,7 @@ class LatexCompiler
 
     public function getProfileOutput(): array
     {
-        return $this->compilationProfile->getProfileOutput();
+        return $this->buildProfile->getProfileOutput();
     }
 
     public function getNumberOfPages(): int

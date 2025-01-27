@@ -13,11 +13,21 @@ class WebServiceProfile extends BasicProfile implements BuildProfileInterface
     use ParseExitCodes;
 
     protected string $apiUrl;
+    protected array $pathReplacement = [
+        'searchRegex' => NULL,
+        'replacement' => NULL
+    ];
 
     public function __construct(LatexFile $latexFile = NULL, string $apiUrl = NULL)
     {
         parent::__construct($latexFile);
         $this->apiUrl = config('latex.profiles.web-service.api-url') ?? $apiUrl;
+    }
+
+    public function setPathReplacement(string $searchRegex, string $replace): void
+    {
+        $this->pathReplacement['searchRegex'] = $searchRegex;
+        $this->pathReplacement['replacement'] = $replace;
     }
 
     public function setApiUrl(string $apiUrl): void
@@ -37,14 +47,19 @@ class WebServiceProfile extends BasicProfile implements BuildProfileInterface
             $modeParam = '&mode='.$options['mode'];
         }
 
-        $pathParam = '?path='.Filesystem::storagePath($this->latexFile->getPath());
+        $path = Filesystem::storagePath($this->latexFile->getPath());
+        if ($this->pathReplacement['searchRegex'] !== NULL) {
+            $path = preg_replace($this->pathReplacement['searchRegex'], $this->pathReplacement['replacement'], $path);
+        }
+
+        $pathParam = '?path='.$path;
 
         $out = @file_get_contents($this->apiUrl . $pathParam . $modeParam);
         $out = explode("\n", $out);
 
         $lastLine = $out[count($out)-1];
 
-        $out = array_merge([ 'Profile: WebServiceProfile' ], $out);
+        $out = array_merge([ 'LaTex build profile: WebServiceProfile' ], $out);
         $this->profileOutput = $out;
 
         list($this->latexExitCode, $this->bibtexExitCode) = $this->parseExitCodes($lastLine);
