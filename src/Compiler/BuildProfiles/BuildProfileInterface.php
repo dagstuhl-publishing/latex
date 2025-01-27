@@ -1,12 +1,14 @@
 <?php
 
-namespace Dagstuhl\Latex\Compiler\CompilationProfiles;
+namespace Dagstuhl\Latex\Compiler\BuildProfiles;
 
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 
-interface CompilationProfileInterface
+interface BuildProfileInterface
 {
     public function __construct(LatexFile $latexFile);
+
+    public function setLatexFile(LatexFile $latexFile);
 
     public function compile(): void;
 

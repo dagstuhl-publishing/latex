@@ -1,43 +1,22 @@
 <?php
 
-namespace Dagstuhl\Latex\Compiler\CompilationProfiles\PdfLatexBibtexLocal;
+namespace Dagstuhl\Latex\Compiler\BuildProfiles\PdfLatexBibtexLocal;
 
-use Dagstuhl\Latex\Compiler\CompilationProfiles\CompilationProfileInterface;
-use Dagstuhl\Latex\LatexStructures\LatexFile;
+use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
 use Dagstuhl\Latex\Utilities\Filesystem;
-use Exception;
+use Dagstuhl\Latex\Compiler\BuildProfiles\BasicProfile;
 
-class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
+class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInterface
 {
-    protected LatexFile $latexFile;
-    
-    protected ?string $version = NULL;
-    protected ?int $latexExitCode;
-    protected ?int $bibtexExitCode;
-
-    protected array $profileOutput = [];
+    use ParseExitCodes;
 
     const MODE_FULL = 'full';
     const MODE_LATEX_ONLY = 'latex-only';
     const MODE_BIBTEX_ONLY = 'bibtex-only';
 
-    public function __construct(LatexFile $latexFile)
-    {
-        $this->latexFile = $latexFile;
-    }
-
     private function getProfileCommand(): string
     {
         return __DIR__.'/pdflatex-bibtex-local.sh';
-    }
-
-    public function getLatexVersion(): string
-    {
-        $this->setEnvironmentVariables();
-        $command = $this->getProfileCommand(). ' --version';
-        exec($command, $out);
-
-        return $out[0] ?? 'pdflatex';
     }
 
     private function getShellEscapeParameter(): string
@@ -100,22 +79,15 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
         }
     }
 
-    private function getExitCodes(string $logLine): array
+
+    public function getLatexVersion(): string
     {
-        preg_match('/Last LaTeX exit code \[([0-9]*)], Last BibTeX exit code \[([0-9]*)]/', $logLine, $matches);
+        $this->setEnvironmentVariables();
+        $command = $this->getProfileCommand(). ' --version';
+        exec($command, $out);
 
-        $exitCodes = [];
-        for ($i= 1; $i<= 2; $i++) {
-            $match = $matches[$i] ?? NULL;
-            if ($match !== NULL) {
-                $match = (int)$match;
-            }
-            $exitCodes[] = $match;
-        }
-
-        return $exitCodes;
+        return $out[0] ?? 'pdflatex';
     }
-
 
     public function compile(array $options = []): void
     {
@@ -126,23 +98,10 @@ class PdfLatexBibtexLocalProfile implements CompilationProfileInterface
 
         exec($command, $out);
 
-        $this->profileOutput = $out;
+        $this->profileOutput = array_merge([ 'Profile: PdfLatexBibtexLocal' ], $out);
+
         $lastLine = $out[count($out)-1];
-        list($this->latexExitCode, $this->bibtexExitCode) = $this->getExitCodes($lastLine);
+        list($this->latexExitCode, $this->bibtexExitCode) = $this->parseExitCodes($lastLine);
     }
 
-    public function getLatexExitCode(): ?int
-    {
-        return $this->latexExitCode;
-    }
-
-    public function getBibtexExitCode(): ?int
-    {
-        return $this->bibtexExitCode;
-    }
-
-    public function getProfileOutput(): array
-    {
-        return $this->profileOutput;
-    }
 }

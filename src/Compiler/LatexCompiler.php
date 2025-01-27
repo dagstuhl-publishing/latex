@@ -2,12 +2,11 @@
 
 namespace Dagstuhl\Latex\Compiler;
 
-use Dagstuhl\Latex\Compiler\CompilationProfiles\CompilationProfileInterface;
-use Dagstuhl\Latex\Compiler\CompilationProfiles\PdfLatexBibtexLocal\PdfLatexBibtexLocalProfile;
+use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
+use Dagstuhl\Latex\Compiler\BuildProfiles\PdfLatexBibtexLocal\PdfLatexBibtexLocalProfile;
 use Dagstuhl\Latex\Compiler\LogParser\DefaultLatexLogParser;
 use Dagstuhl\Latex\Compiler\LogParser\LogParserInterface;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
-use Dagstuhl\Latex\Utilities\Filesystem;
 use Exception;
 
 class LatexCompiler
@@ -15,7 +14,7 @@ class LatexCompiler
     const FATAL_ERROR = 100;
 
     protected LatexFile $latexFile;
-    protected CompilationProfileInterface $compilationProfile;
+    protected BuildProfileInterface $compilationProfile;
     protected LogParserInterface $logParser;
 
     protected ?string $exceptionMessage = NULL;
@@ -25,13 +24,14 @@ class LatexCompiler
     protected ?string $latexVersion = NULL;
 
     public function __construct(
-        LatexFile $latexFile,
-        CompilationProfileInterface $compilationProfile = NULL,
-        LogParserInterface $logParser = NULL
+        LatexFile             $latexFile,
+        BuildProfileInterface $compilationProfile = NULL,
+        LogParserInterface    $logParser = NULL
     )
     {
         $this->latexFile = $latexFile;
-        $this->compilationProfile = $compilationProfile ?? new PdfLatexBibtexLocalProfile($latexFile);
+        $this->compilationProfile = $compilationProfile ?? new PdfLatexBibtexLocalProfile();
+        $this->compilationProfile->setLatexFile($latexFile);
         $this->logParser = $logParser ?? new DefaultLatexLogParser($latexFile);
     }
 
@@ -50,6 +50,10 @@ class LatexCompiler
             $this->compilationProfile->compile($options);
             $this->latexExitCode = $this->compilationProfile->getLatexExitCode();
             $this->bibtexExitCode = $this->compilationProfile->getBibtexExitCode();
+
+            if ($this->latexExitCode === NULL) {
+                $this->latexExitCode = self::FATAL_ERROR;
+            }
         }
         catch(Exception $ex) {
             $this->exceptionMessage = $ex;

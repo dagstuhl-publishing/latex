@@ -5,6 +5,7 @@ if [[ $1 == '--version' ]]; then
     exit 0
 fi
 
+
 WORK_DIR="$(dirname "$1")"
 FILE_NAME="$(basename "$1" .tex)"
 
@@ -36,6 +37,7 @@ function print_exit_codes() {
 echo "LaTeX build info"
 echo -n "- LaTeX version: "
 pdflatex --version | head -1
+echo "- Work dir: ${WORK_DIR}"
 echo "- LaTeX-Command: ${LATEX_CMD}"
 echo "- BibTeX-Command: ${LATEX_CMD}"
 echo
@@ -65,6 +67,7 @@ echo "- moved bbl file to bbl.old"
 run_latex_pass
 
 if grep -q "Temporary extra page added at the end. Rerun to get it removed." "${FILE_NAME}.log"; then
+    echo "- temporary extra-page issue -> rerun"
     run_latex_pass
 fi
 
