@@ -45,7 +45,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
         putenv('MODE='.$options['mode']);
         putenv('BIB_MODE='.$options['bibMode']);
-        putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter($this->latexFile));
+        putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter());
 
         $wwwDataPath = NULL;
         $wwwDataHome = NULL;
@@ -55,7 +55,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
             $this->latexFile->setContents($replacement);
             $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
 
-            $versionPath = config('latex.paths.www-data-path-versions');
+            $versionPath = config('latex.paths.bin-versions');
             $oldVersions = config('latex.old-versions');
             $supportedVersions = !empty($oldVersions)
                 ? explode(';', $oldVersions)
@@ -63,9 +63,9 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
             $wwwDataPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
                 ? str_replace('{version}', $selectedVersion, $versionPath)
-                : config('latex.paths.www-data-path');
+                : config('latex.paths.bin');
 
-            $wwwDataHome = config('latex.paths.www-data-home');
+            $wwwDataHome = config('latex.paths.home');
         }
 
         if (!empty($wwwDataPath)) {

@@ -97,8 +97,8 @@ provide the following values:
 ```php
 return [
     'paths' => [
-        'latex-bin' => env('LATEX_BIN'),        // path to your pdflatex binary
-        'bibtex-bin' => env('BIBTEX_BIN'),      // path to your bibtex binary
+        'bin' => env('LATEX_USER_BIN'),   // PATH variable used in default build environment
+        'home' => env('LATEX_USER_HOME'), // HOME variable used in default build environment
         'pdf-info-bin' => env('PDF_INFO_BIN'),  // path to your pdf-info binary
         'resources' => env('LATEX_RESOURCES_FOLDER'), // resources folder (in case you want to use your own resources) 
     ],
@@ -112,8 +112,8 @@ Outside a laravel project, write a global `config` function like so:
 function config(): array
 {
     return [ 
-        'latex.paths.latex-bin' => 'path/to/pdflatex binary',
-        'latex.paths.bibtex-bin' => 'path/to/bibtex binary',
+        'latex.paths.bin' => '/usr/bin:/usr/local/bin',
+        'latex.paths.home' => '/path/to/home/of/latex-user',
         ...
     ];
 }
