@@ -56,12 +56,9 @@ class WebServiceProfile extends BasicProfile implements BuildProfileInterface
 
         $out = @file_get_contents($this->apiUrl . $pathParam . $modeParam);
         $out = explode("\n", $out);
-
-        $lastLine = $out[count($out)-1];
-
-        $out = array_merge([ 'LaTex build profile: WebServiceProfile' ], $out);
         $this->profileOutput = $out;
 
+        $lastLine = $out[count($out)-1];
         list($this->latexExitCode, $this->bibtexExitCode) = $this->parseExitCodes($lastLine);
     }
 

@@ -35,7 +35,7 @@ class BasicProfile
 
     public function getProfileOutput(): array
     {
-        return $this->profileOutput;
+        return array_merge([ 'LaTeX build profile: '.static::class ], $this->profileOutput);
     }
 
 }

@@ -30,7 +30,6 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
     protected ?int $latexExitCode = NULL;
     protected ?int $bibtexExitCode = NULL;
 
-
     public function __construct(LatexFile $latexFile = NULL)
     {
         parent::__construct($latexFile);
@@ -125,6 +124,8 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
 
     public function compile(): void
     {
+        $this->profileOutput[] = 'LaTex build profile: LegacyProfile';
+
         $this->setEnvironmentVariables();
         $this->clearTempFiles();
 
