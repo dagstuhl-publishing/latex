@@ -21,6 +21,13 @@ function run_latex_pass() {
     echo "- LaTeX pass -> exit code: ${LATEX_EXIT_CODE}"
 }
 
+function run_latex_pass_if_extra_page_occurs() {
+    if grep -q "Temporary extra page added at the end. Rerun to get it removed." "${FILE_NAME}.log"; then
+        echo "- temporary extra-page issue -> rerun pdflatex"
+        run_latex_pass
+    fi
+}
+
 function run_bibtex_pass() {
     eval "${BIBTEX_CMD} > /dev/null"
     BIBTEX_EXIT_CODE=$?
@@ -48,6 +55,7 @@ cd "${WORK_DIR}"
 
 if [[ ${MODE} == 'latex-only' ]]; then
     run_latex_pass
+    run_latex_pass_if_extra_page_occurs
     print_exit_codes
     exit
 fi
@@ -65,15 +73,6 @@ echo "- removed aux and vtc file(s)"
 echo "- moved bbl file to bbl.old"
 
 run_latex_pass
-
-if grep -q "Temporary extra page added at the end. Rerun to get it removed." "${FILE_NAME}.log"; then
-    echo "- temporary extra-page issue -> rerun"
-    run_latex_pass
-fi
-
-if [[ ${LATEX_EXIT_CODE} -ne 0 ]]; then
-    run_latex_pass
-fi
 
 if [[ ${LATEX_EXIT_CODE} -ne 0 ]]; then
     echo "Compilation failed"
