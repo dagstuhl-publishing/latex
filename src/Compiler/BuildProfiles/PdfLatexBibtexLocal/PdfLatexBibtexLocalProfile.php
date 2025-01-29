@@ -47,35 +47,39 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
         putenv('BIB_MODE='.$options['bibMode']);
         putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter());
 
-        $wwwDataPath = NULL;
-        $wwwDataHome = NULL;
+        $latexUserBinPath = NULL;
+        $latexUserHome = NULL;
 
         if (function_exists('config')) {
             $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $this->latexFile->getContents());
             $this->latexFile->setContents($replacement);
             $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
 
-            $versionPath = config('latex.paths.bin-versions');
+            $versionPath = config('latex.paths.bin-versions')
+                ?? config('latex.paths.www-data-path-versions'); // deprecated -> remove
+
             $oldVersions = config('latex.old-versions');
             $supportedVersions = !empty($oldVersions)
                 ? explode(';', $oldVersions)
                 : [];
 
-            $wwwDataPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
+            $latexUserBinPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
                 ? str_replace('{version}', $selectedVersion, $versionPath)
-                : config('latex.paths.bin');
+                : config('latex.paths.bin')
+                    ?? config('latex.paths.www-data-path'); // deprecated -> remove
 
-            $wwwDataHome = config('latex.paths.home');
+            $latexUserHome = config('latex.paths.home')
+                            ?? config('latex.paths.www-data-home'); // deprecated -> remove
         }
 
-        if (!empty($wwwDataPath)) {
-            $wwwDataPath .= '/';
+        if (!empty($latexUserBinPath)) {
+            $latexUserBinPath .= '/';
         }
 
-        putenv('PATH='.$wwwDataPath);
+        putenv('PATH='.$latexUserBinPath);
 
-        if ($wwwDataHome !== NULL) {
-            putenv('HOME='. $wwwDataHome);
+        if ($latexUserHome !== NULL) {
+            putenv('HOME='. $latexUserHome);
         }
     }
 
