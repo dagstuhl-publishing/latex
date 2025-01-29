@@ -91,7 +91,7 @@ $metadata = $reader->getMetadata();
 
 ## 4. Integration into laravel projects
 
-When used inside a laravel project, the `Storage` class is used for interactions with files (driver: local).
+When used inside a laravel project, the `Storage` class is used for interactions with files.
 To interact with your LaTeX installation (e.g., via the `LatexCompiler` class), you must add a config file named `config/latex.php`
 provide the following values:
 ```php
@@ -117,4 +117,10 @@ function config(): array
         ...
     ];
 }
+```
+Note: The config keys related to the LaTeX compiler class have changed in version 2.6. The old keys  `latex.paths.latex-bin`,
+`latex.paths.bibtex-bin`, `latex.paths.www-data-path`, `latex.paths.www-data-home` are deprecated (but still supported temporarily 
+by the LegacyProfile, which can be applied by instantiating the compiler class as follows
+```php
+$latexCompiler = new LatexCompiler($latexCompiler, new LegacyProfile());
 ```
