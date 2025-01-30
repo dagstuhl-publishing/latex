@@ -27,8 +27,7 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
     protected array $bibtexOutput = [];
     protected ?string $exceptionMessage = NULL;
 
-    protected ?int $latexExitCode = NULL;
-    protected ?int $bibtexExitCode = NULL;
+    private $environmentSet = false;
 
     public function __construct(LatexFile $latexFile = NULL)
     {
@@ -85,6 +84,10 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
 
     private function setEnvironmentVariables(): void
     {
+        if ($this->environmentSet === true) {
+            return;
+        }
+
         $wwwDataPath = NULL;
         $wwwDataHome = NULL;
 
@@ -114,6 +117,13 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
         if ($wwwDataHome !== NULL) {
             putenv('HOME='. $wwwDataHome);
         }
+
+        $this->environmentSet = true;
+
+        $this->profileOutput[] = '- LaTeX version: '.$this->getLatexVersion();
+        $this->profileOutput[] = '- $HOME: '.$wwwDataHome;
+        $this->profileOutput[] = '- $PATH: '.$wwwDataPath;
+
     }
 
     public function labelsChanged(): bool
@@ -124,8 +134,6 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
 
     public function compile(): void
     {
-        $this->profileOutput[] = 'LaTex build profile: LegacyProfile';
-
         $this->setEnvironmentVariables();
         $this->clearTempFiles();
 
@@ -151,19 +159,28 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
 
         $bibtexCommand = $changeDirectory. ' && '.config('latex.paths.bibtex-bin').' '.$texFilename;
 
+        $this->profileOutput[] = '- Work dir: '.$this->workingDir;
+        $this->profileOutput[] = '- LaTeX command: '.$latexCommand;
+        $this->profileOutput[] = '- BibTeX command: '.$latexCommand;
+
         try {
 
             exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+            $this->profileOutput[] = '- LaTeX pass -> exit cide: '.$this->latexExitCode;
 
             $output = implode("\n", $this->latexOutput);
 
             // extra run on "Temporary extra page"-warning
             if ($this->latexExitCode !== 0 AND str_contains($output, self::EXTRA_PAGE)) {
+                $this->profileOutput[] = '- extra-page warning -> new pass';
                 exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+                $this->profileOutput[] = '- LaTeX pass -> exit code: '.$this->latexExitCode;
             }
 
             if ($this->latexExitCode !== 0) {
+                $this->profileOutput[] = '- non-zero exit code -> new pass';
                 exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+                $this->profileOutput[] = '- LaTeX pass -> exit code: '.$this->latexExitCode;
             }
 
             $this->bibtexExitCode = 0;
@@ -171,22 +188,26 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
             if (count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0) {
 
                 exec($bibtexCommand, $this->bibtexOutput, $this->bibtexExitCode);
+                $this->profileOutput[] = '- BibTeX pass -> exit code: '.$this->bibtexExitCode;
 
                 if ($this->bibtexExitCode !== 0 AND $this->bibtexExitCode !== 2) {
                     return;
                 }
 
-                exec($latexCommand);
+                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+                $this->profileOutput[] = '- LaTeX pass -> exit code: '.$this->latexExitCode;
             }
 
             Filesystem::delete($logFile);
 
             exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+            $this->profileOutput[] = '- LaTeX pass -> exit code: '.$this->latexExitCode;
 
             if ($this->labelsChanged()) {
                 Filesystem::delete($logFile);
-
+                $this->profileOutput[] = '- labels changed, rerun LaTeX';
                 exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+                $this->profileOutput[] = '- LaTeX pass -> exit code: '.$this->latexExitCode;
             }
 
         }
