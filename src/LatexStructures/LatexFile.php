@@ -37,7 +37,7 @@ class LatexFile extends LatexString
 
         $pdfPath = $this->getPath('pdf');
 
-        if ($copyPdf AND Filesystem::exists($pdfPath)) {
+        if ($copyPdf AND Filesystem::fileExists($pdfPath)) {
 
             $newPdfPath = preg_replace('/\.tex$/', '.pdf', $pathToFile);
 
@@ -160,7 +160,7 @@ class LatexFile extends LatexString
     {
         $path = $this->getPath(self::EXTENSION_CONDENSED_FILE);
 
-        if (Filesystem::exists($path) AND $fromCache) {
+        if (Filesystem::fileExists($path) AND $fromCache) {
             return new static($path);
         }
 
@@ -279,10 +279,10 @@ class LatexFile extends LatexString
         $import = true;
         $fileExists = true;
 
-        if (Filesystem::exists($filename.'.tex')) {
+        if (Filesystem::fileExists($filename.'.tex')) {
             $filename .= '.tex';
         }
-        elseif (!Filesystem::exists($filename)) {
+        elseif (!Filesystem::fileExists($filename)) {
             $fileExists = false;
             $import = false;
         }
@@ -547,7 +547,7 @@ class LatexFile extends LatexString
 
         $auxPath = $this->getPath('aux');
 
-        if (!Filesystem::exists($auxPath)) {
+        if (!Filesystem::fileExists($auxPath)) {
             return [];
         }
 
@@ -608,7 +608,7 @@ class LatexFile extends LatexString
         $output['pageNumberStartAppendix'] = -1;
         $output['lastpage'] = -1;
 
-        if (!Filesystem::exists($auxPath)) {
+        if (!Filesystem::fileExists($auxPath)) {
             return $output;
         }
 

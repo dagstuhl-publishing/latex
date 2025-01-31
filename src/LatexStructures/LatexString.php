@@ -38,6 +38,7 @@ class LatexString
 
         // some special cases
         $value = str_replace('\item%', '\item %', $value);
+        $value = str_replace('\par%', '\par %', $value);
         $value = str_replace('\noindent%', '\noindent %', $value);
         $value = str_replace('\textstyle%', '\textstyle %', $value);
         $value = str_replace('\isanewline%', '\isanewline %', $value);

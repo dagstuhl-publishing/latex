@@ -293,7 +293,7 @@ class LatexValidator
 
         $missingFiles = [];
         foreach($bibFiles as $file) {
-            if (!Filesystem::exists($file)) {
+            if (!Filesystem::fileExists($file)) {
                 $missingFiles[] = basename($file);
             }
         }

@@ -97,17 +97,16 @@ abstract class Filesystem
         }
     }
 
-    public static function exists(string $path): bool
+    public static function fileExists(string $path): bool
     {
         try {
             return class_exists('\Storage')
-                ? \Storage::exists($path)
+                ? \Storage::fileExists($path)
                 : @file_exists($path);
         }
         catch(\Exception $ex) {
             return false;
         }
-
     }
 
     public static function storagePath(string $path): string

@@ -162,7 +162,7 @@ abstract class MetadataMappings
 
     public static function calculatePagesFromPdfV1(string $string, string $originalString = NULL, LatexFile $latexFile = NULL): int
     {
-        return Filesystem::exists($latexFile->getPath('pdf'))
+        return Filesystem::fileExists($latexFile->getPath('pdf'))
             ? $latexFile->getNumberOfPages()
             : 0;
     }

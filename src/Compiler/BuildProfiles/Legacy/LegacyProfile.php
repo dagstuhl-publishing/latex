@@ -141,7 +141,7 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
         $bblFile = $texFilename.'.bbl';
         $logFile = $texFilename.'.log';
 
-        if (Filesystem::exists($bblFile)) {
+        if (Filesystem::fileExists($bblFile)) {
             Filesystem::delete($bblFile.'.old');
             Filesystem::move($bblFile, $bblFile . '.old');
         }
@@ -166,7 +166,7 @@ class LegacyProfile extends BasicProfile implements BuildProfileInterface
         try {
 
             exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-            $this->profileOutput[] = '- LaTeX pass -> exit cide: '.$this->latexExitCode;
+            $this->profileOutput[] = '- LaTeX pass -> exit code: '.$this->latexExitCode;
 
             $output = implode("\n", $this->latexOutput);
 
