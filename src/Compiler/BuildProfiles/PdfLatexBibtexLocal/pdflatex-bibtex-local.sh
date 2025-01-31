@@ -31,8 +31,14 @@ function another_run_needed() {
         echo -n "- WARNING: temporary-page added "
         return 1;
     fi
+
     if grep -q "Label(s) may have changed. Rerun" "${FILE_NAME}.log"; then
         echo -n "- WARNING: label(s) may have changed "
+        return 1;
+    fi
+
+    if grep -q "There were undefined references" "${FILE_NAME}.log"; then
+        echo -n "- WARNING: undefined references "
         return 1;
     fi
     return 0;
@@ -90,21 +96,27 @@ echo "- moved bbl file to bbl.old"
 
 run_latex_pass
 
-if [[ ${LATEX_EXIT_CODE} -ne 0 ]]; then
-    echo "- compilation failed"
-    print_exit_codes
-    exit
-fi
-
-another_run_needed
-ANOTHER_RUN_NEEDED=$?
-if [[ ${ANOTHER_RUN_NEEDED} -ne 0 ]]; then
-  echo "-> do not re-run latex now, bibtex first"
-fi
-
 if [[ ${BIB_MODE} == "bibtex" ]]; then
     run_bibtex_pass
     run_latex_pass
+fi
+
+if [[ ${LATEX_EXIT_CODE} -ne 0 ]]; then
+    # IMPORTANT:
+    # - the following extra run is necesary to obtain "label multiply defined" error messages (if this error occurs)
+    # - these are not contained in the log of the first run (TeXLive 2023/2024)
+    another_run_needed
+    ANOTHER_RUN_NEEDED=$?
+    if [[ ${ANOTHER_RUN_NEEDED} -ne 0 ]]; then
+      echo "-> rerun latex once"
+      run_latex_pass
+    fi
+
+    if [[ ${LATEX_EXIT_CODE} -ne 0 ]]; then
+      echo "- compilation failed"
+      print_exit_codes
+      exit
+    fi
 fi
 
 run_latex_pass
