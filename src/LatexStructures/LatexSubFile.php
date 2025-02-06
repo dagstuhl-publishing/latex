@@ -47,13 +47,13 @@ class LatexSubFile
         $path = $this->mainLatexFile->getDirectory().$name;
         $path = trim($path);
 
-        if (Filesystem::exists($path.'.tex') AND !StringHelper::startsWith($snippet, '\usepackage{')) {
+        if (Filesystem::fileExists($path.'.tex') AND !StringHelper::startsWith($snippet, '\usepackage{')) {
             $path .= '.tex';
         }
-        elseif (Filesystem::exists($path.'.sty')) {
+        elseif (Filesystem::fileExists($path.'.sty')) {
             $path .= '.sty';
         }
-        elseif (!Filesystem::exists($path)) {
+        elseif (!Filesystem::fileExists($path)) {
             $this->fileExists = false;
             $this->import = false;
         }

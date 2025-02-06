@@ -1,11 +1,11 @@
 <?php
 
-namespace Dagstuhl\Latex\Compiler;
+namespace Dagstuhl\Latex\Compiler\LogParser;
 
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 use Dagstuhl\Latex\Utilities\Filesystem;
 
-class LatexLogParser
+class DefaultLatexLogParser implements LogParserInterface
 {
     const LOG_FILTER_FULL = 'full';
     const LOG_FILTER_STANDARD = 'standard';
@@ -40,12 +40,10 @@ class LatexLogParser
     ];
 
     protected LatexFile $latexFile;
-    protected string $logFilter;
 
-    public function __construct(LatexFile $latexFile, ?string $logFilter = self::LOG_FILTER_STANDARD)
+    public function __construct(LatexFile $latexFile)
     {
         $this->latexFile = $latexFile;
-        $this->logFilter = $logFilter;
     }
 
     /**
@@ -87,8 +85,9 @@ class LatexLogParser
     /**
      * @return array|string[]
      */
-    public function getLatexLog(): array
+    public function getLatexLog(?string $logFilter = self::LOG_FILTER_STANDARD): array
     {
+        $logFilter = $logFilter ?? self::LOG_FILTER_STANDARD;
         $pathToLogFile = $this->latexFile->getPath('log');
 
         try {
@@ -101,7 +100,7 @@ class LatexLogParser
 
         $outputLines = [ 'Please specify a log-filter for LatexCompiler (see LatexCompiler::getLatexLog)' ];
 
-        if ($this->logFilter === self::LOG_FILTER_STANDARD) {
+        if ($logFilter === self::LOG_FILTER_STANDARD) {
 
             // first step: apply log-filter to generate $outputLines array
             $outputLines = $this->getLatexLogRaw($lines);
@@ -162,7 +161,7 @@ class LatexLogParser
 
             $outputLines = array_merge($essentialWarnings, $referenceWarnings, $citationWarnings);
         }
-        elseif ($this->logFilter === self::LOG_FILTER_FULL) {
+        elseif ($logFilter === self::LOG_FILTER_FULL) {
             $outputLines = $lines;
         }
 
@@ -207,8 +206,10 @@ class LatexLogParser
     /**
      * @return array|string[]
      */
-    public function getBibTexLog(): array
+    public function getBibTexLog(?string $logFilter = self::LOG_FILTER_STANDARD_BIB): array
     {
+        $logFilter = $logFilter ?? self::LOG_FILTER_STANDARD_BIB;
+
         if (count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) === 0) {
             return [ '* No bib-file used.' ];
         }
@@ -225,7 +226,7 @@ class LatexLogParser
 
         $outputLines[] = [ '* Please specify a valid log-filter for LatexCompiler (see LatexCompiler::getBibTexLog)' ];
 
-        if ($this->logFilter === self::LOG_FILTER_STANDARD) {
+        if ($logFilter === self::LOG_FILTER_STANDARD_BIB) {
 
             // first step: apply log-filter to generate $outputLines array
             $outputLines = $this->getBibTexLogRaw($lines);
@@ -265,7 +266,7 @@ class LatexLogParser
 
             $outputLines = array_merge($essentialWarnings, $missingEntryWarnings);
         }
-        elseif ($this->logFilter === self::LOG_FILTER_FULL) {
+        elseif ($logFilter === self::LOG_FILTER_FULL) {
             $outputLines = $lines;
         }
 

@@ -2,189 +2,60 @@
 
 namespace Dagstuhl\Latex\Compiler;
 
+use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
+use Dagstuhl\Latex\Compiler\BuildProfiles\PdfLatexBibtexLocal\PdfLatexBibtexLocalProfile;
+use Dagstuhl\Latex\Compiler\LogParser\DefaultLatexLogParser;
+use Dagstuhl\Latex\Compiler\LogParser\LogParserInterface;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
-use Dagstuhl\Latex\Utilities\Filesystem;
-use phpDocumentor\Reflection\Types\Null_;
+use Exception;
 
 class LatexCompiler
 {
-    const TEMP_FILE_EXTENSIONS = [ 'vtc', 'aux', 'log' ];
-
-    const LABELS_CHANGED = 'Label(s) may have changed. Rerun';
-    const EXTRA_PAGE = 'Temporary extra page added at the end. Rerun to get it removed.';
-
     const FATAL_ERROR = 100;
 
     protected LatexFile $latexFile;
+    protected BuildProfileInterface $buildProfile;
+    protected LogParserInterface $logParser;
 
-    protected string $texFilename;
-    protected string $workingDir;
-    protected string $relativeWorkingDir;
-
-    protected array $latexOutput = [];
-    protected array $bibtexOutput = [];
     protected ?string $exceptionMessage = NULL;
-
     protected ?int $latexExitCode = NULL;
     protected ?int $bibtexExitCode = NULL;
 
-    protected static ?string $version = NULL;
+    protected ?string $latexVersion = NULL;
 
-    /**
-     * LatexCompiler constructor.
-     */
-    public function __construct(LatexFile $latexFile)
+    public function __construct(
+        LatexFile $latexFile,
+        BuildProfileInterface $buildProfile = NULL,
+        LogParserInterface $logParser = NULL
+    )
     {
-        $texFilePath = $latexFile->getPath();
-
-        $relativeWorkingDir = pathinfo($texFilePath, PATHINFO_DIRNAME).'/';
-
         $this->latexFile = $latexFile;
-        $this->texFilename = preg_replace('/\.tex$/', '', basename($texFilePath));
-        $this->workingDir = Filesystem::storagePath($relativeWorkingDir);
-        $this->relativeWorkingDir = $relativeWorkingDir;
+        $this->buildProfile = $buildProfile ?? new PdfLatexBibtexLocalProfile();
+        $this->buildProfile->setLatexFile($latexFile);
+        $this->logParser = $logParser ?? new DefaultLatexLogParser($latexFile);
     }
 
     public function getLatexVersion(): string
     {
-        if (self::$version !== NULL) {
-            return self::$version;
+        if ($this->latexVersion === NULL) {
+            $this->latexVersion = $this->buildProfile->getLatexVersion();
         }
 
-        $this->setEnvironmentVariables();
-        exec(config('latex.paths.latex-bin'). ' --version', $msg);
-
-        self::$version = $msg[0] ?? 'pdflatex';
-
-        return self::$version;
+        return $this->latexVersion;
     }
 
-    public function clearTempFiles(): void
+    public function compile(array $options = []): int
     {
-        $texFilename = $this->relativeWorkingDir.$this->texFilename;
-
-        foreach(self::TEMP_FILE_EXTENSIONS as $ext) {
-            $path = $texFilename.'.'.$ext;
-
-            Filesystem::delete($path);
-        }
-    }
-
-    private function getShellEscapeParameter(): string
-    {
-        $shellEscape = '';
-
-        $latexContents = $this->latexFile->getContents();
-
-        if (str_contains($latexContents, '\begin{minted}')
-            OR str_contains($latexContents, '\usepackage{minted}')
-            OR str_contains($latexContents, '\inputminted')) {
-            $shellEscape = '-shell-escape ';
-        }
-
-        return $shellEscape;
-    }
-
-    private function setEnvironmentVariables(): void
-    {
-        $wwwDataPath = NULL;
-        $wwwDataHome = NULL;
-
-        if (function_exists('config')) {
-
-            $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $this->latexFile->getContents());
-            $this->latexFile->setContents($replacement);
-            $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
-
-            $versionPath = config('latex.paths.www-data-path-versions');
-            $oldVersions = config('latex.old-versions');
-            $supportedVersions = !empty($oldVersions)
-                    ? explode(';', $oldVersions)
-                    : [];
-
-            $wwwDataPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
-                ? str_replace('{version}', $selectedVersion, $versionPath)
-                : config('latex.paths.www-data-path');
-
-            $wwwDataHome = config('latex.paths.www-data-home');
-        }
-
-        if ($wwwDataPath !== NULL) {
-            putenv('PATH='. $wwwDataPath);
-        }
-
-        if ($wwwDataHome !== NULL) {
-            putenv('HOME='. $wwwDataHome);
-        }
-    }
-
-    public function compile(): int
-    {
-        $this->setEnvironmentVariables();
-        $this->clearTempFiles();
-
-        $texFilename = $this->relativeWorkingDir.$this->texFilename;
-        $bblFile = $texFilename.'.bbl';
-        $logFile = $texFilename.'.log';
-
-        if (Filesystem::exists($bblFile)) {
-            Filesystem::delete($bblFile.'.old');
-            Filesystem::move($bblFile, $bblFile . '.old');
-        }
-
-        $changeDirectory = 'cd '.$this->workingDir;
-
-        // put "..." around filename to handle special chars (like " ", "(", ...)
-        $texFilename = '"'.$this->texFilename.'"';
-
-        $latexCommand = $changeDirectory. ' && '.
-            config('latex.paths.latex-bin').
-            ' -interaction=nonstopmode '.
-            $this->getShellEscapeParameter().
-            $texFilename;
-
-        $bibtexCommand = $changeDirectory. ' && '.config('latex.paths.bibtex-bin').' '.$texFilename;
-
         try {
+            $this->buildProfile->compile($options);
+            $this->latexExitCode = $this->buildProfile->getLatexExitCode();
+            $this->bibtexExitCode = $this->buildProfile->getBibtexExitCode();
 
-            exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-
-            $output = implode("\n", $this->latexOutput);
-
-            // extra run on "Temporary extra page"-warning
-            if ($this->latexExitCode !== 0 AND str_contains($output, self::EXTRA_PAGE)) {
-                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
+            if ($this->latexExitCode === NULL) {
+                $this->latexExitCode = self::FATAL_ERROR;
             }
-
-            if ($this->latexExitCode !== 0) {
-                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-            }
-
-            $this->bibtexExitCode = 0;
-
-            if (count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0) {
-
-                exec($bibtexCommand, $this->bibtexOutput, $this->bibtexExitCode);
-
-                if ($this->bibtexExitCode !== 0 AND $this->bibtexExitCode !== 2) {
-                    return $this->bibtexExitCode;
-                }
-
-                exec($latexCommand);
-            }
-
-            Filesystem::delete($logFile);
-
-            exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-
-            if ($this->labelsChanged()) {
-                Filesystem::delete($logFile);
-
-                exec($latexCommand, $this->latexOutput, $this->latexExitCode);
-            }
-
         }
-        catch(\Exception $ex) {
+        catch(Exception $ex) {
             $this->exceptionMessage = $ex;
             $this->latexExitCode = self::FATAL_ERROR;
         }
@@ -207,16 +78,6 @@ class LatexCompiler
         return $this->getExceptionMessage() !== NULL;
     }
 
-    public function getLatexOutput(): array
-    {
-        return $this->latexOutput;
-    }
-
-    public function getBibtexOutput(): array
-    {
-        return $this->bibtexOutput;
-    }
-
     public function getLatexExitCode(): ?int
     {
         return $this->latexExitCode;
@@ -232,18 +93,14 @@ class LatexCompiler
         return $this->exceptionMessage ?? '';
     }
 
-    public function labelsChanged(): bool
+    public function getProfileOutput(): array
     {
-        $logLines = $this->getLatexLog();
-
-        $log = implode(' ', $logLines);
-
-        return stripos($log, self::LABELS_CHANGED) !== false;
+        return $this->buildProfile->getProfileOutput();
     }
 
     public function getNumberOfPages(): int
     {
-        $log = implode(' ', $this->getLatexLog(LatexLogParser::LOG_FILTER_FULL));
+        $log = implode(' ', $this->getLatexLog(DefaultLatexLogParser::LOG_FILTER_FULL));
 
         if (preg_match_all('/output written on .* \(([0-9]+) page(s{0,1})/i', $log, $matches) > 0) {
             return (int)$matches[1][0];
@@ -255,21 +112,17 @@ class LatexCompiler
     /**
      * @return string[]
      */
-    public function getLatexLog(string $logFilter = LatexLogParser::LOG_FILTER_STANDARD): array
+    public function getLatexLog(string $logFilter = NULL): array
     {
-        $logParser = new LatexLogParser($this->latexFile, $logFilter);
-
-        return $logParser->getLatexLog();
+        return $this->logParser->getLatexLog($logFilter);
     }
 
     /**
      * @return string[]
      */
-    public function getBibTexLog(string $logFilter = LatexLogParser::LOG_FILTER_STANDARD): array
+    public function getBibTexLog(string $logFilter = NULL): array
     {
-        $logParser = new LatexLogParser($this->latexFile, $logFilter);
-
-        return $logParser->getBibtexLog();
+        return $this->logParser->getBibtexLog($logFilter);
     }
 
     /**
@@ -279,9 +132,7 @@ class LatexCompiler
      */
     public function getMessages(string $messageType): array
     {
-        $logParser = new LatexLogParser($this->latexFile);
-
-        return $logParser->getMessages($messageType);
+        return $this->logParser->getMessages($messageType);
     }
 
 }

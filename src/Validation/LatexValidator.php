@@ -3,6 +3,7 @@
 namespace Dagstuhl\Latex\Validation;
 
 use Dagstuhl\Latex\Bibliography\Bibliography;
+use Dagstuhl\Latex\Compiler\LogParser\DefaultLatexLogParser;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 use Dagstuhl\Latex\Metadata\MetadataItem;
 use Dagstuhl\Latex\Strings\StringHelper;
@@ -278,11 +279,21 @@ class LatexValidator
     {
         $bibErrors = [];
 
+        $logParser = new DefaultLatexLogParser($this->latexFile);
+        $bibLog = implode(' ', $logParser->getBibTexLog());
+        if (str_contains($bibLog, 'I found no \bibstyle command')) {
+            $bibErrors[] = 'ERROR: missing <code>\bibliogrphystyle</code> macro -> please add <code>\bibliographystyle{plainurl}</code> in your main LaTeX file';
+        }
+
+        if (!str_contains($bibLog, 'I couldn\'t open database file')) {
+            return $bibErrors;
+        }
+
         $bibFiles = $this->latexFile->getBibliography()->getPathsToUsedBibFiles();
 
         $missingFiles = [];
         foreach($bibFiles as $file) {
-            if (!Filesystem::exists($file)) {
+            if (!Filesystem::fileExists($file)) {
                 $missingFiles[] = basename($file);
             }
         }

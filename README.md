@@ -91,14 +91,14 @@ $metadata = $reader->getMetadata();
 
 ## 4. Integration into laravel projects
 
-When used inside a laravel project, the `Storage` class is used for interactions with files (driver: local).
+When used inside a laravel project, the `Storage` class is used for interactions with files.
 To interact with your LaTeX installation (e.g., via the `LatexCompiler` class), you must add a config file named `config/latex.php`
 provide the following values:
 ```php
 return [
     'paths' => [
-        'latex-bin' => env('LATEX_BIN'),        // path to your pdflatex binary
-        'bibtex-bin' => env('BIBTEX_BIN'),      // path to your bibtex binary
+        'bin' => env('LATEX_USER_BIN'),   // PATH variable used in default build environment
+        'home' => env('LATEX_USER_HOME'), // HOME variable used in default build environment
         'pdf-info-bin' => env('PDF_INFO_BIN'),  // path to your pdf-info binary
         'resources' => env('LATEX_RESOURCES_FOLDER'), // resources folder (in case you want to use your own resources) 
     ],
@@ -112,9 +112,15 @@ Outside a laravel project, write a global `config` function like so:
 function config(): array
 {
     return [ 
-        'latex.paths.latex-bin' => 'path/to/pdflatex binary',
-        'latex.paths.bibtex-bin' => 'path/to/bibtex binary',
+        'latex.paths.bin' => '/usr/bin:/usr/local/bin',
+        'latex.paths.home' => '/path/to/home/of/latex-user',
         ...
     ];
 }
+```
+Note: The config keys related to the LaTeX compiler class have changed in version 2.6. The old keys  `latex.paths.latex-bin`,
+`latex.paths.bibtex-bin`, `latex.paths.www-data-path`, `latex.paths.www-data-home` are deprecated (but still supported temporarily 
+by the LegacyProfile, which can be applied by instantiating the compiler class as follows
+```php
+$latexCompiler = new LatexCompiler($latexCompiler, new LegacyProfile());
 ```
