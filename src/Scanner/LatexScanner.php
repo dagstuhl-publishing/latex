@@ -194,6 +194,23 @@ class LatexScanner
         return new LatexArgumentChunk($lineNo, $arg, $optional, $braces, $body);
     }
 
+    public function readVerb(): ?LatexVerbChunk
+    {
+        $lineNo = $this->lineNo;
+        $delim = $this->remaining[0] ?? '';
+        $end = strpos($this->remaining, $delim, 1);
+
+        if ($end === false) {
+            return null;
+        }
+
+        $raw = substr($this->remaining, 0, $end + 1);
+        $this->remaining = substr($this->remaining, $end);
+        $text = substr($raw, 1, strlen($raw)-2);
+
+        return new LatexVerbChunk($lineNo, $raw, $text);
+    }
+
     public function readEnv(?LatexEnvCommandChunk $begin): ?LatexEnvironmentChunk
     {
         if($begin === null) {

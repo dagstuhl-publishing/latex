@@ -2,6 +2,10 @@
 
 namespace Dagstuhl\Latex\LatexStructures;
 
+use Dagstuhl\Latex\Scanner\LatexCommandChunk;
+use Dagstuhl\Latex\Scanner\LatexCommentChunk;
+use Dagstuhl\Latex\Scanner\LatexEnvCommandChunk;
+use Dagstuhl\Latex\Scanner\LatexScanner;
 use Dagstuhl\Latex\Utilities\PlaceholderManager;
 
 class LatexString
@@ -68,12 +72,43 @@ class LatexString
 
     public function removeComments($prettyPrint = true): void
     {
-        $this->saveVerbatimLikePatterns();
-        $this->_removeComments($prettyPrint);
-        $this->restorePatterns();
+        // $this->saveVerbatimLikePatterns();
+        // $this->_removeComments($prettyPrint);
+        // $this->restorePatterns();
+
+        $latexScanner = new LatexScanner($this->value);
+
+        $chunks = [];
+
+        while(($chunk = $latexScanner->readChunk()) !== null) {
+            if ($chunk instanceof LatexEnvCommandChunk && $chunk->isEnvCommand('begin')) {
+                // preserve verbatim-like environments
+                if (in_array($chunk->envName, LatexPatterns::CODE_ENVIRONMENT_NAMES)) {
+                    $chunk = $latexScanner->readEnv($chunk);
+                }
+                // skip comment environments
+                if ($chunk->envName === 'comment') {
+                    $latexScanner->readEnv($chunk);
+                    $chunk = null;
+                }
+            }
+
+            if ($chunk !== null) {
+                $chunks[] = $chunk;
+            }
+            // preserve inline verbatim strings
+            if ($chunk instanceof LatexCommandChunk && $chunk->isCommand('verb')) {
+                $chunks[] = $latexScanner->readVerb();
+            }
+        }
+
+        $this->value = '';
+        foreach ($chunks as $chunk) {
+            if (!$chunk instanceof LatexCommentChunk) {
+                $this->value .= $chunk->raw;
+            }
+        }
     }
-
-
 
     protected function setLatexFile($latexFile): void
     {

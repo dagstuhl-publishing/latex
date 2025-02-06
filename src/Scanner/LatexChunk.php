@@ -14,6 +14,11 @@ abstract class LatexChunk
         $this->raw = $raw;
     }
 
+    public function isVerb(): bool
+    {
+        return false;
+    }
+
     public function isComment(): bool
     {
         return false;
