@@ -76,7 +76,7 @@ class LatexString
                 $this->value .= $chunk->raw;
             }
         }
-
+/*
         // some special cases
         $value = str_replace('\item%', '\item %', $value);
         $value = str_replace('\par%', '\par %', $value);
@@ -94,6 +94,7 @@ class LatexString
         $value = preg_replace(LatexPatterns::COMMENT_AT_END_OF_LINE, '', $value);
 
         // The following replacements are minor corrections primarily to improve the readability.
+*/
 
         if ($prettyPrint) {
             // Note that Step 2 possibly deletes line breaks after \end{<env>}
