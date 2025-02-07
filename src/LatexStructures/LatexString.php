@@ -8,6 +8,10 @@ class LatexString
 {
     private string $value;
     private string $originalValue;
+    protected string $commentFreeValue;
+    protected bool $valueHasBeenUpdated = false;
+
+
     private PlaceholderManager $placeholderManager;
 
     protected ?LatexFile $latexFile;
@@ -69,12 +73,21 @@ class LatexString
 
     public function removeComments($prettyPrint = true): void
     {
-        $this->saveVerbatimLikePatterns();
-        $this->_removeComments($prettyPrint);
-        $this->restorePatterns();
+        $this->setValue($this->getValueWithoutComments($prettyPrint));
     }
 
+    public function getValueWithoutComments(bool $prettyPrint = false): string
+    {
+        if ($this->valueHasBeenUpdated OR empty($this->commentFreeValue)) {
+            $clonedString = new static($this->value);
+            $clonedString->saveVerbatimLikePatterns();
+            $clonedString->_removeComments($prettyPrint);
+            $clonedString->restorePatterns();
+            $this->commentFreeValue = $clonedString->getValue(false, false);
+        }
 
+        return $this->commentFreeValue;
+    }
 
     protected function setLatexFile($latexFile): void
     {
@@ -94,23 +107,17 @@ class LatexString
 
     public function getValue($withoutComments = false, $prettyPrint = true): string
     {
-        $value = $this->value;
-
-        if ($withoutComments) {
-            $buffer = $this->value;
-
-            $this->removeComments($prettyPrint);
-
-            $value = $this->value;
-
-            $this->value = $buffer;
-        }
-
-        return $value;
+        return $withoutComments
+            ? $this->getValueWithoutComments($prettyPrint)
+            : $this->value;
     }
 
     public function setValue($value, $writeToParents = false): bool
     {
+        if ($this->value !== $value) {
+            $this->valueHasBeenUpdated = true;
+        }
+
         $this->value = $value;
 
         if ($writeToParents AND $this->isWritableToLatexFile()) {
