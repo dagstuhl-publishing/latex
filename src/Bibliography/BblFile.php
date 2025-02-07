@@ -12,19 +12,14 @@ class BblFile
     const BIBTEX_KEY_PATTERN = '/\\\\bibitem\{(.+)\}/';
 
     private string $path;
-    private ?string $contents;
+    private ?string $contents = null;
 
     /** @var string[] */
-    private array $keys;
+    private ?array $keys = null;
 
     public function __construct(string $path)
     {
         $this->path = $path;
-        $this->contents = Filesystem::get($this->path);
-
-        preg_match_all(self::BIBTEX_KEY_PATTERN, $this->contents, $results, PREG_SET_ORDER, 0);
-
-        $this->keys = array_column($results, 1);
     }
 
     public function getPath(): string
@@ -34,6 +29,10 @@ class BblFile
 
     public function getContents(): ?string
     {
+        if ($this->contents === null) {
+            $this->contents = Filesystem::get($this->path);
+        }
+
         return $this->contents;
     }
 
@@ -42,6 +41,11 @@ class BblFile
      */
     public function getKeys(): array
     {
+        if ($this->keys === null) {
+            preg_match_all(self::BIBTEX_KEY_PATTERN, $this->getContents(), $results, PREG_SET_ORDER, 0);
+            $this->keys = array_column($results, 1);
+        }
+
         return $this->keys;
     }
 }
