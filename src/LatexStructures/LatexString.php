@@ -79,7 +79,7 @@ class LatexString
     public function getValueWithoutComments(bool $prettyPrint = false): string
     {
         if ($this->valueHasBeenUpdated OR empty($this->commentFreeValue)) {
-            $clonedString = new static($this->value);
+            $clonedString = new self($this->value);
             $clonedString->saveVerbatimLikePatterns();
             $clonedString->_removeComments($prettyPrint);
             $clonedString->restorePatterns();
