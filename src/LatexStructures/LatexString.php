@@ -37,8 +37,8 @@ class LatexString
 
     private function _removeComments($prettyPrint = true): void
     {
-        $value = $this->value;
         $this->saveVerbatimLikePatterns();
+        $value = $this->value;
 
         // some special cases
         $value = str_replace('\item%', '\item %', $value);
