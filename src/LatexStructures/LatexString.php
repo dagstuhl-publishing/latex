@@ -8,9 +8,8 @@ class LatexString
 {
     private string $value;
     private string $originalValue;
-    protected string $commentFreeValue;
-    protected bool $valueHasBeenUpdated = false;
-
+    protected string $commentFreeCache;
+    protected bool $updateCache = false;
 
     private PlaceholderManager $placeholderManager;
 
@@ -39,6 +38,7 @@ class LatexString
     private function _removeComments($prettyPrint = true): void
     {
         $value = $this->value;
+        $this->saveVerbatimLikePatterns();
 
         // some special cases
         $value = str_replace('\item%', '\item %', $value);
@@ -50,7 +50,9 @@ class LatexString
 
         // Step 1: If a comment is followed by a blank (or white-spaced) line,
         //         delete the comment but preserve the blank line.
-        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "\n\n", $value);
+        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "$1\n", $value);
+
+        // dd($value);
 
         // Step 2: All remaining comments are deleted including the end-standing linebreak
         //         and whitespaces at the beginning of the next line
@@ -69,6 +71,7 @@ class LatexString
         }
 
         $this->value = $value;
+        $this->restorePatterns();
     }
 
     public function removeComments($prettyPrint = true): void
@@ -78,15 +81,14 @@ class LatexString
 
     public function getValueWithoutComments(bool $prettyPrint = false): string
     {
-        if ($this->valueHasBeenUpdated OR empty($this->commentFreeValue)) {
+        if ($this->updateCache OR empty($this->commentFreeCache)) {
             $clonedString = new self($this->value);
-            $clonedString->saveVerbatimLikePatterns();
             $clonedString->_removeComments($prettyPrint);
-            $clonedString->restorePatterns();
-            $this->commentFreeValue = $clonedString->getValue(false, false);
+            $this->commentFreeCache = $clonedString->getValue(false, false);
+            $this->updateCache = false;
         }
 
-        return $this->commentFreeValue;
+        return $this->commentFreeCache;
     }
 
     protected function setLatexFile($latexFile): void
@@ -102,7 +104,7 @@ class LatexString
     public function isWritableToLatexFile(): bool
     {
         return $this->latexFile instanceof LatexFile
-                AND substr_count($this->latexFile->getValue(), $this->originalValue) === 1;
+            AND substr_count($this->latexFile->getValue(), $this->originalValue) === 1;
     }
 
     public function getValue($withoutComments = false, $prettyPrint = true): string
@@ -115,7 +117,7 @@ class LatexString
     public function setValue($value, $writeToParents = false): bool
     {
         if ($this->value !== $value) {
-            $this->valueHasBeenUpdated = true;
+            $this->updateCache = true;
         }
 
         $this->value = $value;
