@@ -54,7 +54,7 @@ class LatexString
 
         // Step 1: If a comment is followed by a blank (or white-spaced) line,
         //         delete the comment but preserve the blank line.
-        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "$1\n", $value);
+        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "\n\n", $value);
 
         // dd($value);
 
