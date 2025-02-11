@@ -52,9 +52,11 @@ abstract class LatexPatterns
 
     const ENV_END_NOT_FOLLOWED_BY_COMMAND = '/(\\\\end\{.{1,10}\})\h*(?!\\\\)([A-Za-z\,])/U';
 
-    // comments
-    const COMMENT_FOLLOWED_BY_BLANK_LINE = '/\%.*\n\s*\n/';
+    // the % sign ignores the remaining part of the line, including horizontal whitespace at the beginning of the following line
+    // see https://en.wikibooks.org/wiki/LaTeX/Basics#Comments
     const COMMENT_AT_END_OF_LINE = '/\%.*\n\h*/';
+    // but blank lines following a comment are preserved
+    const COMMENT_FOLLOWED_BY_BLANK_LINE = '/\%.*\n( *)\n/';
 
     const NEW_COMMAND_SAME_LINE = '/([^\n ])(\\\\newcommand|\\\\renewcommand)/';
 
