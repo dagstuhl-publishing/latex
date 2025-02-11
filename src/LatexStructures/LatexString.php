@@ -288,4 +288,33 @@ class LatexString
 
         return $mathHeadlines;
     }
+
+
+    /**
+     * @param string[] $commands
+     * @param callable $transformChunkToRaw
+     * @return void
+     */
+    public function mapCommands(array $commands, callable $transformChunkToRaw): void
+    {
+        $scanner = new LatexScanner($this->value);
+
+        $newString = '';
+        $occurrenceCount = 0;
+        while(($chunk = $scanner->readChunk()) !== null) {
+            if ($chunk->isCommand($commands)) {
+                $occurrenceCount++;
+                $newString .= $transformChunkToRaw($chunk, $scanner);
+            }
+            else {
+                $newString .= $chunk->raw;
+            }
+        }
+
+        $this->value = $newString;
+
+        if ($occurrenceCount > 0) {
+            $this->mapCommands($commands, $transformChunkToRaw);
+        }
+    }
 }
