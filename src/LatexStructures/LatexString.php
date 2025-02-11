@@ -44,8 +44,42 @@ class LatexString
         $this->saveVerbatimLikePatterns();
         $value = $this->value;
 
-        $latexScanner = new LatexScanner($this->value);
+        // some special cases
+        $value = str_replace('\item%', '\item %', $value);
+        $value = str_replace('\par%', '\par %', $value);
+        $value = str_replace('\noindent%', '\noindent %', $value);
+        $value = str_replace('\textstyle%', '\textstyle %', $value);
+        $value = str_replace('\isanewline%', '\isanewline %', $value);
+        $value = str_replace('\midrule%', '\midrule %', $value);
 
+        // Step 1: If a comment is followed by a blank (or white-spaced) line,
+        //         delete the comment but preserve the blank line.
+        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "$1\n", $value);
+
+        // dd($value);
+
+        // Step 2: All remaining comments are deleted including the end-standing linebreak
+        //         and whitespaces at the beginning of the next line
+        $value = preg_replace(LatexPatterns::COMMENT_AT_END_OF_LINE, '', $value);
+
+        // The following replacements are minor corrections primarily to improve the readability.
+
+        if ($prettyPrint) {
+            // Note that Step 2 possibly deletes line breaks after \end{<env>}
+            // Add these line-breaks (except there is a tex command right after the environment)
+            // to improve readability.
+            $value = preg_replace(LatexPatterns::ENV_END_NOT_FOLLOWED_BY_COMMAND, "$1\n$2", $value);
+
+            // Separate new commands by a linebreak if necessary.
+            $value = preg_replace(LatexPatterns::NEW_COMMAND_SAME_LINE, "$1\n$2", $value);
+        }
+
+        $this->value = $value;
+        $this->restorePatterns();
+
+        return;
+
+        // TODO: the following (more accurate) approach is much slower; are there any optimizations?
         $chunks = [];
 
         while(($chunk = $latexScanner->readChunk()) !== null) {
@@ -76,40 +110,6 @@ class LatexString
                 $this->value .= $chunk->raw;
             }
         }
-/*
-        // some special cases
-        $value = str_replace('\item%', '\item %', $value);
-        $value = str_replace('\par%', '\par %', $value);
-        $value = str_replace('\noindent%', '\noindent %', $value);
-        $value = str_replace('\textstyle%', '\textstyle %', $value);
-        $value = str_replace('\isanewline%', '\isanewline %', $value);
-        $value = str_replace('\midrule%', '\midrule %', $value);
-
-        // Step 1: If a comment is followed by a blank (or white-spaced) line,
-        //         delete the comment but preserve the blank line.
-        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "$1\n", $value);
-
-        // dd($value);
-
-        // Step 2: All remaining comments are deleted including the end-standing linebreak
-        //         and whitespaces at the beginning of the next line
-        $value = preg_replace(LatexPatterns::COMMENT_AT_END_OF_LINE, '', $value);
-
-        // The following replacements are minor corrections primarily to improve the readability.
-*/
-
-        if ($prettyPrint) {
-            // Note that Step 2 possibly deletes line breaks after \end{<env>}
-            // Add these line-breaks (except there is a tex command right after the environment)
-            // to improve readability.
-            $value = preg_replace(LatexPatterns::ENV_END_NOT_FOLLOWED_BY_COMMAND, "$1\n$2", $value);
-
-            // Separate new commands by a linebreak if necessary.
-            $value = preg_replace(LatexPatterns::NEW_COMMAND_SAME_LINE, "$1\n$2", $value);
-        }
-
-        $this->value = $value;
-        $this->restorePatterns();
     }
 
     public function removeComments($prettyPrint = true): void
