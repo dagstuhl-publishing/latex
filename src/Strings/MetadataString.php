@@ -7,6 +7,7 @@ use Dagstuhl\Latex\LatexStructures\LatexEnvironment;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 use Dagstuhl\Latex\LatexStructures\LatexMacro;
 use Dagstuhl\Latex\LatexStructures\LatexString;
+use Dagstuhl\Latex\Metadata\ChunkMappings\CommandMappings;
 use Dagstuhl\Latex\Utilities\PlaceholderManager;
 
 class MetadataString
@@ -24,13 +25,14 @@ class MetadataString
     const REPLACEMENT_XSPACE = '';
 
     const TEX_FONT_COMMANDS = [
-        'switch' =>  [ 'normalfont', 'em',   'rmfamily', 'sffamily', 'ttfamily', 'tt',     'upshape', 'itshape', 'it',     'slshape', 'scshape', 'sc',     'bfseries', 'mdseries', 'lfseries', 'mathsf', 'sf',     'cal',     'mathbb', 'bm',       'rm',      'bf',    'sl' ],
-        'command' => [ 'textnormal', 'emph', 'textrm',   'textsf',   'texttt',   'texttt', 'textup',  'textit',  'textit', 'textsl',  'textsc',  'textsc', 'textbf',   'textmd',   'textlf',   'mathsf', 'textsf', 'mathcal', 'mathbb', 'boldmath', 'textrm', 'textbf', 'textit' ]
+        'switch' =>  [ 'normalfont', 'em',   'rmfamily', 'sffamily', 'ttfamily', 'tt',     'upshape', 'upshapefamily', 'itshape', 'it',     'slshape', 'scshape', 'sc',     'bfseries', 'mdseries', 'lfseries', 'mathsf', 'sf',     'cal',     'mathbb', 'bm',       'rm',      'bf',    'sl' ],
+        'command' => [ 'textnormal', 'emph', 'textrm',   'textsf',   'texttt',   'texttt', 'textup',  'textup',        'textit',  'textit', 'textsl',  'textsc',  'textsc', 'textbf',   'textmd',   'textlf',   'mathsf', 'textsf', 'mathcal', 'mathbb', 'boldmath', 'textrm', 'textbf', 'textit' ]
     ];
 
     const TEX_FORMAT_MACROS = [
         'boldsymbol', 'boldmath', 'bm',
         'underline',
+        'selectfont',
         'textbf', 'textup', 'textsf', 'textsc', 'text',
         'mathsf', 'mathbf',
         'mathrm', 'mbox',
@@ -187,6 +189,7 @@ class MetadataString
 
         $this->dropPdfStrings()
             ->removeFontMacros()
+            ->resolveEnquote()
             ->removeFootnotes()
             ->removeLabels()
             ->removeProtect()
@@ -399,6 +402,29 @@ class MetadataString
 
     public function removeFontMacros(int $loops = 3): static
     {
+        // replace switch syntax with command syntax in obvious cases, e.g., {\ttfamily -> \ttfamily{
+        // this helps to improve the result (less curly braces)
+        $fontSwitches = static::TEX_FONT_COMMANDS['switch'];
+        foreach($fontSwitches as $key=>$switch) {
+            $this->string = str_replace('{\\'.$switch.' ', '\\'.self::TEX_FONT_COMMANDS['command'][$key].'{', $this->string);
+        }
+
+        $fontCommands = array_unique(array_merge(
+            static::TEX_FONT_COMMANDS['command'],
+            static::TEX_FONT_COMMANDS['switch'],
+            static::TEX_FORMAT_MACROS
+        ));
+
+        // the actual replacement happens here
+        $this->string = (new LatexString($this->string))
+            ->mapCommands($fontCommands, [ CommandMappings::class, 'replaceByBody' ])
+            ->mapCommands($fontSwitches, [ CommandMappings::class, 'removeCommand' ])
+            ->mapCommands([ 'fontencoding' ], [ CommandMappings::class, 'removeCommandWith1Arg' ])
+            ->getValue();
+
+        return $this;
+
+        /* TODO: remove if the above code proves to be reliable
         $string = $this->string;
 
         foreach(self::TEX_FONT_COMMANDS['switch'] as $key=>$switch) {
@@ -435,6 +461,7 @@ class MetadataString
         }
 
         return $this->removeFontMacros($loops);
+        */
     }
 
     /**
@@ -775,7 +802,19 @@ class MetadataString
     public function reviseDoubleQuotes(): static
     {
         $string = str_replace('``', '"', $this->string);
-        $this->string = str_replace("''", '"', $string);
+        $string = str_replace("''", '"', $string);
+        $string = str_replace('\lq\lq ', '"', $string);
+        $string = str_replace('\lq\lq', '"', $string);
+        $this->string = str_replace('\rq\rq', '"', $string);
+
+        return $this;
+    }
+
+    public function resolveEnquote(): static
+    {
+        $this->string = (new LatexString($this->string))
+            ->mapCommands('enquote', [ CommandMappings::class, 'enquoteFirstArgument' ])
+            ->getValue();
 
         return $this;
     }
@@ -882,25 +921,19 @@ class MetadataString
         return $this;
     }
 
-    /**
-     * @return PlaceholderManager
-     */
-    public function saveMath()
+    public function saveMath(): PlaceholderManager
     {
-       $placeholderMgr = new PlaceholderManager();
+        $placeholderMgr = new PlaceholderManager();
 
-       $string = $this->string;
-       $string = $placeholderMgr->substitutePatterns([ '/\\\\\[.*\\\\\]/smU' ], $string);
-       $string = $placeholderMgr->substitutePatterns([ '/\$.*\$/smU' ], $string);
-       $this->string = $string;
+        $string = $this->string;
+        $string = $placeholderMgr->substitutePatterns([ '/\\\\\[.*\\\\\]/smU' ], $string);
+        $string = $placeholderMgr->substitutePatterns([ '/\$.*\$/smU' ], $string);
+        $this->string = $string;
 
-       return $placeholderMgr;
+        return $placeholderMgr;
     }
 
-    /**
-     * @return PlaceholderManager
-     */
-    public function reviseMath()
+    public function reviseMath(): PlaceholderManager
     {
         // unify and save math environments
         $mathMgr = $this->replaceEnsureMathWithInlineMath()

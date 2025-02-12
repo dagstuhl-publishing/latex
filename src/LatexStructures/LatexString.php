@@ -195,8 +195,8 @@ class LatexString
         $environments = $this->getEnvironments($name);
 
         return count($environments) === 1
-                ? $environments[0]
-                : NULL;
+            ? $environments[0]
+            : NULL;
     }
 
     /**
@@ -218,8 +218,8 @@ class LatexString
         $macros = $this->getMacros($name);
 
         return count($macros) === 1
-                ? $macros[0]
-                : NULL;
+            ? $macros[0]
+            : NULL;
     }
 
     public function hasMacro(string $name): bool
@@ -289,32 +289,39 @@ class LatexString
         return $mathHeadlines;
     }
 
-
     /**
      * @param string[] $commands
      * @param callable $transformChunkToRaw
-     * @return void
+     * @param int $maxIterations
+     * @return static
      */
-    public function mapCommands(array $commands, callable $transformChunkToRaw): void
+    public function mapCommands(string|array $commands, callable $transformChunkToRaw, int $maxIterations = 6): static
     {
+        if (is_string($commands)) {
+            $commands = [ $commands ];
+        }
+
         $scanner = new LatexScanner($this->value);
 
         $newString = '';
         $occurrenceCount = 0;
         while(($chunk = $scanner->readChunk()) !== null) {
+            $value = $chunk->raw;
+
             if ($chunk->isCommand($commands)) {
                 $occurrenceCount++;
-                $newString .= $transformChunkToRaw($chunk, $scanner);
+                $value = $transformChunkToRaw($chunk, $scanner);
             }
-            else {
-                $newString .= $chunk->raw;
-            }
+
+            $newString .= $value;
         }
 
         $this->value = $newString;
 
-        if ($occurrenceCount > 0) {
-            $this->mapCommands($commands, $transformChunkToRaw);
+        if ($occurrenceCount > 0 && $maxIterations > 0) {
+            return $this->mapCommands($commands, $transformChunkToRaw, --$maxIterations);
         }
+
+        return $this;
     }
 }
