@@ -190,7 +190,7 @@ class LatexScanner
         $this->incrementLineNo($arg);
         $this->remaining = substr($this->remaining, $i);
 
-        $body = $braces !== null ? $arg : substr($arg, 1, strlen($arg) - 2);
+        $body = $braces === null ? $arg : substr($arg, 1, strlen($arg) - 2);
         return new LatexArgumentChunk($lineNo, $arg, $optional, $braces, $body);
     }
 
