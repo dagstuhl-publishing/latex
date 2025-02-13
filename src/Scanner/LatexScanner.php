@@ -190,7 +190,7 @@ class LatexScanner
         $this->incrementLineNo($arg);
         $this->remaining = substr($this->remaining, $i);
 
-        $body = substr($arg, 1, strlen($arg) - 2);
+        $body = $braces !== null ? $arg : substr($arg, 1, strlen($arg) - 2);
         return new LatexArgumentChunk($lineNo, $arg, $optional, $braces, $body);
     }
 
@@ -205,8 +205,9 @@ class LatexScanner
         }
 
         $raw = substr($this->remaining, 0, $end + 1);
+        $this->incrementLineNo($raw);
         $this->remaining = substr($this->remaining, $end);
-        $text = substr($raw, 1, strlen($raw)-2);
+        $text = substr($raw, 1, strlen($raw) - 2);
 
         return new LatexVerbChunk($lineNo, $raw, $text);
     }
