@@ -70,16 +70,16 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
             $latexUserHome = config('latex.paths.home')
                             ?? config('latex.paths.www-data-home'); // deprecated -> remove
-        }
 
-        if (!empty($latexUserBinPath)) {
-            $latexUserBinPath .= '/';
-        }
+            if (!empty($latexUserBinPath)) {
+                $latexUserBinPath .= '/';
+            }
 
-        putenv('PATH='.$latexUserBinPath);
+            putenv('PATH='.$latexUserBinPath);
 
-        if ($latexUserHome !== NULL) {
-            putenv('HOME='. $latexUserHome);
+            if ($latexUserHome !== NULL) {
+                putenv('HOME='. $latexUserHome);
+            }
         }
     }
 
