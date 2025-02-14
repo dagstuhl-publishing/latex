@@ -245,7 +245,7 @@ class LatexFile extends LatexString
             if($chunk->isCommand([ 'newcommand', 'renewcommand', 'providecommand' ])) {
                 if(str_starts_with($scanner->getRemaining(), '*')) {
                     $scanner->take(1);
-                    // $newContents .= '*';
+                    $newContents .= '*';
                 }
 
                 $name = $scanner->readNonOptArgument()->raw;
