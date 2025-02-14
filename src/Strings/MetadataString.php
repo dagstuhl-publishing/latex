@@ -112,6 +112,9 @@ class MetadataString
         // convert non-math part
         $this->convertMathFreeString($forBib);
 
+        // remove remaining curly braces -> check carefully
+        $this->string = preg_replace('/{(.*)}/smU', '$1', $this->string);
+
         // re-insert math parts
         $this->restoreSnippets($mathMgr);
 
@@ -926,6 +929,10 @@ class MetadataString
         $placeholderMgr = new PlaceholderManager();
 
         $string = $this->string;
+        $string = $placeholderMgr->substitutePatterns([ '/\\\\begin{align}.*\\\\end{align}/smU' ], $string);
+        $string = $placeholderMgr->substitutePatterns([ '/\\\\begin{equation}.*\\\\end{equation}/smU' ], $string);
+        $string = $placeholderMgr->substitutePatterns([ '/\\\\begin{align\*}.*\\\\end{align\*}/smU' ], $string);
+        $string = $placeholderMgr->substitutePatterns([ '/\\\\begin{equation\*}.*\\\\end{equation\*}/smU' ], $string);
         $string = $placeholderMgr->substitutePatterns([ '/\\\\\[.*\\\\\]/smU' ], $string);
         $string = $placeholderMgr->substitutePatterns([ '/\$.*\$/smU' ], $string);
         $this->string = $string;
