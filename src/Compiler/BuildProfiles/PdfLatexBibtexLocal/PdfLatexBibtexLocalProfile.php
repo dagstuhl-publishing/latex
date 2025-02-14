@@ -45,12 +45,18 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
         putenv('MODE='.$options['mode']);
         putenv('BIB_MODE='.$options['bibMode']);
-        putenv('LATEX_OPTIONS='.$this->getShellEscapeParameter());
 
-        $latexUserBinPath = NULL;
-        $latexUserHome = NULL;
+        $shellEscape = $this->getShellEscapeParameter();
+        if (($options['shell-escape'] ?? false)) {
+            $shellEscape = '-shell-escape ';
+        }
+
+        putenv('LATEX_OPTIONS='.$shellEscape);
 
         if (function_exists('config')) {
+            $latexUserBinPath = NULL;
+            $latexUserHome = NULL;
+
             $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $this->latexFile->getContents());
             $this->latexFile->setContents($replacement);
             $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
