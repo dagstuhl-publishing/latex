@@ -248,7 +248,7 @@ class LatexFile extends LatexString
                     $newContents .= '*';
                 }
 
-                $name = $scanner->readNonOptArgument()->raw;
+                $name = $scanner->readNonOptArgument()->raw ?? '';
                 $opts = '';
                 while(($opt = $scanner->readOptArgument()) !== null) {
                     $opts .= $opt->raw;
