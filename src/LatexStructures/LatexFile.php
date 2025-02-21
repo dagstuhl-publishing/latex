@@ -243,9 +243,10 @@ class LatexFile extends LatexString
         while(($chunk = $scanner->readChunk()) !== null) {
 
             if($chunk->isCommand([ 'newcommand', 'renewcommand', 'providecommand' ])) {
+                $suffix = '';
                 if(str_starts_with($scanner->getRemaining(), '*')) {
                     $scanner->take(1);
-                    $newContents .= '*';
+                    $suffix = '*';
                 }
 
                 $name = $scanner->readNonOptArgument()->raw ?? '';
@@ -254,10 +255,9 @@ class LatexFile extends LatexString
                     $opts .= $opt->raw;
                 }
                 $def = $scanner->readNonOptArgument()?->raw ?? '';
-
-                $newContents .= $chunk->raw.$name.$opts.$def;
-
-            } else if($chunk->isCommand('undef')) {
+                $newContents .= $chunk->raw.$suffix.$name.$opts.$def;
+            }
+            else if($chunk->isCommand('undef')) {
                 $arg = $scanner->readNonOptArgument();
                 $newContents .= $chunk->raw . $arg->raw;
             }
