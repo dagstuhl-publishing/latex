@@ -154,4 +154,35 @@ abstract class Filesystem
 
         return $contents;
     }
+
+    public static function deleteDirectory(string $path, bool $absolutePath = false): void
+    {
+        if (class_exists('\Storage') && !$absolutePath) {
+            \Storage::deleteDirectory($path);
+        }
+        elseif (is_dir($path)) {
+            $objects = scandir($path);
+            foreach ($objects as $object) {
+                if ($object !== '.' && $object !== '..') {
+                    if (is_dir($path. DIRECTORY_SEPARATOR .$object) && !is_link($path.'/'.$object)) {
+                        self::deleteDirectory($path . DIRECTORY_SEPARATOR . $object);
+                    }
+                    else {
+                        unlink($path . DIRECTORY_SEPARATOR . $object);
+                    }
+                }
+            }
+            rmdir($path);
+        }
+    }
+
+    public static function makeDirectory(string $path, $absolutePath = false): void
+    {
+        if (class_exists('\Storage') && !$absolutePath) {
+            \Storage::makeDirectory($path);
+        }
+        else {
+            mkdir($path, 0777, true);
+        }
+    }
 }

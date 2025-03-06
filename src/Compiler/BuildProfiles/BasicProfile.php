@@ -11,11 +11,16 @@ class BasicProfile
     protected ?int $bibtexExitCode;
     protected array $profileOutput = [];
 
-    public function __construct(LatexFile $latexFile = NULL)
+    protected array $globalOptions = [];
+
+
+    public function __construct(LatexFile $latexFile = NULL, array $globalOptions = [])
     {
         if ($latexFile !== NULL) {
             $this->latexFile = $latexFile;
         }
+
+        $this->globalOptions = $globalOptions;
     }
 
     public function setLatexFile(LatexFile $latexFile): void
