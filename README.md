@@ -109,13 +109,13 @@ return [
 ```
 Outside a laravel project, write a global `config` function like so:
 ```php
-function config(): array
+function config(string $key): array
 {
-    return [ 
+    return match($key) {
         'latex.paths.bin' => '/usr/bin:/usr/local/bin',
         'latex.paths.home' => '/path/to/home/of/latex-user',
         ...
-    ];
+    };
 }
 ```
 Note: The config keys related to the LaTeX compiler class have changed in version 2.6. The old keys  `latex.paths.latex-bin`,
