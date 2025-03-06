@@ -9,7 +9,7 @@ fi
 WORK_DIR="$(dirname "$1")"
 FILE_NAME="$(basename "$1" .tex)"
 
-LATEX_CMD="pdflatex -interaction=nonstopmode ${LATEX_OPTIONS} \"${FILE_NAME}\""
+LATEX_CMD="pdflatex -interaction=nonstopmode -halt-on-error ${LATEX_OPTIONS} \"${FILE_NAME}\""
 BIBTEX_CMD="bibtex \"${FILE_NAME}\""
 
 

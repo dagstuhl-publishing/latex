@@ -34,35 +34,26 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
         return $shellEscape;
     }
 
-    private function setEnvironmentVariables(array $options= []): void
+    public function getEnvironmentVariables(array $options= []): string
     {
         $bibMode = count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0
             ? 'bibtex'
             : 'none';
 
-        $options['mode'] = $options['mode'] ?? self::MODE_FULL;
-        $options['bibMode'] = $options['bibMode'] ?? $bibMode;
+        $env = [
+            'MODE' => $options['MODE'] ?? $options['mode'] ?? self::MODE_FULL,
+            'BIB_MODE' => $options['BIB_MODE'] ?? $options['bibMode'] ?? $bibMode,
+            'LATEX_OPTIONS' => $this->getShellEscapeParameter()
+        ];
 
-        putenv('MODE='.$options['mode']);
-        putenv('BIB_MODE='.$options['bibMode']);
-
-        $shellEscape = $this->getShellEscapeParameter();
-        if (($options['shell-escape'] ?? false)) {
-            $shellEscape = '-shell-escape ';
-        }
-
-        putenv('LATEX_OPTIONS='.$shellEscape);
+        $latexUserBinPath = NULL;
+        $latexUserHome = NULL;
 
         if (function_exists('config')) {
-            $latexUserBinPath = NULL;
-            $latexUserHome = NULL;
-
             $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $this->latexFile->getContents());
             $this->latexFile->setContents($replacement);
             $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
-
-            $versionPath = config('latex.paths.bin-versions')
-                ?? config('latex.paths.www-data-path-versions'); // deprecated -> remove
+            $versionPath = config('latex.paths.bin-versions');
 
             $oldVersions = config('latex.old-versions');
             $supportedVersions = !empty($oldVersions)
@@ -71,29 +62,31 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
             $latexUserBinPath = ($versionPath !== NULL AND in_array($selectedVersion, $supportedVersions))
                 ? str_replace('{version}', $selectedVersion, $versionPath)
-                : config('latex.paths.bin')
-                    ?? config('latex.paths.www-data-path'); // deprecated -> remove
+                : config('latex.paths.bin');
 
-            $latexUserHome = config('latex.paths.home')
-                            ?? config('latex.paths.www-data-home'); // deprecated -> remove
-
-            if (!empty($latexUserBinPath)) {
-                $latexUserBinPath .= '/';
-            }
-
-            putenv('PATH='.$latexUserBinPath);
-
-            if ($latexUserHome !== NULL) {
-                putenv('HOME='. $latexUserHome);
-            }
+            $latexUserHome = config('latex.paths.home');
         }
+
+        if (!empty($latexUserBinPath)) {
+            $env['PATH'] = $latexUserBinPath;
+        }
+
+        if (!empty($latexUserHome)) {
+            $env['HOME'] = $latexUserHome;
+        }
+
+        $envString = '';
+        foreach($env as $key=>$value) {
+            $envString .= ' ' . $key . '=' . escapeshellarg($value);
+        }
+
+        return trim($envString);
     }
 
 
     public function getLatexVersion(): string
     {
-        $this->setEnvironmentVariables();
-        $command = $this->getProfileCommand(). ' --version';
+        $command = $this->getEnvironmentVariables() . ' ' . $this->getProfileCommand() . ' --version';
         exec($command, $out);
 
         return $out[0] ?? 'pdflatex';
@@ -101,10 +94,8 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
     public function compile(array $options = []): void
     {
-        $this->setEnvironmentVariables($options);
-
         $absolutePath = Filesystem::storagePath($this->latexFile->getPath());
-        $command = $this->getProfileCommand(). ' '. $absolutePath;
+        $command = $this->getEnvironmentVariables($options) . ' ' . $this->getProfileCommand(). ' '. $absolutePath;
 
         exec($command, $out);
 
@@ -113,5 +104,4 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
         $lastLine = $out[count($out)-1];
         list($this->latexExitCode, $this->bibtexExitCode) = $this->parseExitCodes($lastLine);
     }
-
 }
