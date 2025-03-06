@@ -94,12 +94,16 @@ class MathString extends MetadataString
     public function stripMathDelimiters(): static
     {
         $string = $this->string;
-
         $string = trim($string);
 
-        $string = preg_replace('/^\\\\\[(.*)\]\\\\$/sm', '$1', $string);
-        $string = preg_replace('/^\$(.*)\$$/sm', '$1', $string);
+        $displayMath = MetadataString::NEWLINE_PLACEHOLDER.'$1'.MetadataString::NEWLINE_PLACEHOLDER;
 
+        $string = preg_replace('/^\\\\\[(.*)\\\\]$/sm', '$1', $string);
+        $string = preg_replace('/^\$(.*)\$$/sm', '$1', $string);
+        $string = preg_replace('/^\\\\begin{equation}(.*)\\\\end{equation}$/sm', $displayMath, $string);
+        $string = preg_replace('/^\\\\begin{align}(.*)\\\\end{align}$/sm', $displayMath, $string);
+        $string = preg_replace('/^\\\\begin{equation\*}(.*)\\\\end{equation\*}$/sm', $displayMath, $string);
+        $string = preg_replace('/^\\\\begin{align\*}(.*)\\\\end{align\*}$/sm', $displayMath, $string);
         $this->string = $string;
 
         return $this;

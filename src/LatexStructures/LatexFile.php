@@ -10,6 +10,7 @@ use Dagstuhl\Latex\Styles\LatexStyle;
 use Dagstuhl\Latex\Utilities\Filesystem;
 use Dagstuhl\Latex\Utilities\PlaceholderManager;
 use Dagstuhl\Latex\Validation\LatexValidator;
+use Dagstuhl\Latex\Scanner\LatexScanner;
 
 class LatexFile extends LatexString
 {
@@ -235,6 +236,39 @@ class LatexFile extends LatexString
     public function normalizeNewCommands(): void
     {
         $contents = $this->getContents();
+
+        $scanner = new LatexScanner($contents);
+
+        $newContents = '';
+        while(($chunk = $scanner->readChunk()) !== null) {
+
+            if($chunk->isCommand([ 'newcommand', 'renewcommand', 'providecommand' ])) {
+                $suffix = '';
+                if(str_starts_with($scanner->getRemaining(), '*')) {
+                    $scanner->take(1);
+                    $suffix = '*';
+                }
+
+                $name = $scanner->readNonOptArgument()->raw ?? '';
+                $opts = '';
+                while(($opt = $scanner->readOptArgument()) !== null) {
+                    $opts .= $opt->raw;
+                }
+                $def = $scanner->readNonOptArgument()?->raw ?? '';
+                $newContents .= $chunk->raw.$suffix.$name.$opts.$def;
+            }
+            else if($chunk->isCommand('undef')) {
+                $arg = $scanner->readNonOptArgument();
+                $newContents .= $chunk->raw . $arg->raw;
+            }
+            else {
+                $newContents .= $chunk->raw;
+            }
+        }
+
+        $this->setContents($newContents);
+
+        return;
 
         // move \newcommand to the beginning of a line
         $contents = preg_replace('/([^\n])(\\\\newcommand|\\\\renewcommand)/', '$1'."\n".'$2', $contents);

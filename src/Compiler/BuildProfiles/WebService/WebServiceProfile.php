@@ -42,9 +42,12 @@ class WebServiceProfile extends BasicProfile implements BuildProfileInterface
 
     public function compile(array $options = []): void
     {
-        $modeParam = '';
+        $modeParam = $shellEscapeParam = '';
         if (!empty($options['mode'])) {
             $modeParam = '&mode='.$options['mode'];
+        }
+        if (isset($options['shell-escape']) && $options['shell-escape']) {
+            $shellEscapeParam = '&shell-escape=1';
         }
 
         $path = Filesystem::storagePath($this->latexFile->getPath());
@@ -54,7 +57,7 @@ class WebServiceProfile extends BasicProfile implements BuildProfileInterface
 
         $pathParam = '?path='.$path;
 
-        $out = @file_get_contents($this->apiUrl . $pathParam . $modeParam);
+        $out = @file_get_contents($this->apiUrl . $pathParam . $modeParam . $shellEscapeParam);
         $out = explode("\n", $out);
         $this->profileOutput = $out;
 

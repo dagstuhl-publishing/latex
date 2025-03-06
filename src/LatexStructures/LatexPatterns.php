@@ -45,7 +45,7 @@ abstract class LatexPatterns
         'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO', 'pseudolisting',
         'rustlisting',
         'scalalisting',
-        'VerbatimFigure'
+        'verbatim', 'VerbatimFigure'
     ];
 
     const ENV_ISABELLE = '/(\\\\begin\{isabelle\})(.*)(\\\\end\{isabelle\})/smU';

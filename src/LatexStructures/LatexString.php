@@ -2,6 +2,10 @@
 
 namespace Dagstuhl\Latex\LatexStructures;
 
+use Dagstuhl\Latex\Scanner\LatexCommandChunk;
+use Dagstuhl\Latex\Scanner\LatexCommentChunk;
+use Dagstuhl\Latex\Scanner\LatexEnvCommandChunk;
+use Dagstuhl\Latex\Scanner\LatexScanner;
 use Dagstuhl\Latex\Utilities\PlaceholderManager;
 
 class LatexString
@@ -50,7 +54,7 @@ class LatexString
 
         // Step 1: If a comment is followed by a blank (or white-spaced) line,
         //         delete the comment but preserve the blank line.
-        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "$1\n", $value);
+        $value = preg_replace(LatexPatterns::COMMENT_FOLLOWED_BY_BLANK_LINE, "\n\n", $value);
 
         // dd($value);
 
@@ -72,6 +76,40 @@ class LatexString
 
         $this->value = $value;
         $this->restorePatterns();
+
+        return;
+
+        // TODO: the following (more accurate) approach is much slower; are there any optimizations?
+        $chunks = [];
+
+        while(($chunk = $latexScanner->readChunk()) !== null) {
+            if ($chunk instanceof LatexEnvCommandChunk && $chunk->isEnvCommand('begin')) {
+                // preserve verbatim-like environments
+                if (in_array($chunk->envName, LatexPatterns::CODE_ENVIRONMENT_NAMES)) {
+                    $chunk = $latexScanner->readEnv($chunk);
+                }
+                // skip comment environments
+                if ($chunk->envName === 'comment') {
+                    $latexScanner->readEnv($chunk);
+                    $chunk = null;
+                }
+            }
+
+            if ($chunk !== null) {
+                $chunks[] = $chunk;
+            }
+            // preserve inline verbatim strings
+            if ($chunk instanceof LatexCommandChunk && $chunk->isCommand('verb')) {
+                $chunks[] = $latexScanner->readVerb();
+            }
+        }
+
+        $this->value = '';
+        foreach ($chunks as $chunk) {
+            if (!$chunk instanceof LatexCommentChunk) {
+                $this->value .= $chunk->raw;
+            }
+        }
     }
 
     public function removeComments($prettyPrint = true): void
@@ -157,8 +195,8 @@ class LatexString
         $environments = $this->getEnvironments($name);
 
         return count($environments) === 1
-                ? $environments[0]
-                : NULL;
+            ? $environments[0]
+            : NULL;
     }
 
     /**
@@ -180,8 +218,8 @@ class LatexString
         $macros = $this->getMacros($name);
 
         return count($macros) === 1
-                ? $macros[0]
-                : NULL;
+            ? $macros[0]
+            : NULL;
     }
 
     public function hasMacro(string $name): bool
@@ -249,5 +287,41 @@ class LatexString
         }
 
         return $mathHeadlines;
+    }
+
+    /**
+     * @param string[] $commands
+     * @param callable $transformChunkToRaw
+     * @param int $maxIterations
+     * @return static
+     */
+    public function mapCommands(string|array $commands, callable $transformChunkToRaw, int $maxIterations = 6): static
+    {
+        if (is_string($commands)) {
+            $commands = [ $commands ];
+        }
+
+        $scanner = new LatexScanner($this->value);
+
+        $newString = '';
+        $occurrenceCount = 0;
+        while(($chunk = $scanner->readChunk()) !== null) {
+            $value = $chunk->raw;
+
+            if ($chunk->isCommand($commands)) {
+                $occurrenceCount++;
+                $value = $transformChunkToRaw($chunk, $scanner);
+            }
+
+            $newString .= $value;
+        }
+
+        $this->value = $newString;
+
+        if ($occurrenceCount > 0 && $maxIterations > 0) {
+            return $this->mapCommands($commands, $transformChunkToRaw, --$maxIterations);
+        }
+
+        return $this;
     }
 }

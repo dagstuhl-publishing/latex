@@ -32,7 +32,6 @@ abstract class Filesystem
             else {
                 file_put_contents($path, $contents);
             }
-
         } catch (\Exception $ex) { }
     }
 
@@ -55,8 +54,7 @@ abstract class Filesystem
             \Storage::copy($srcPath, $targetPath);
         }
         else {
-            $contents = file_get_contents($srcPath);
-            file_put_contents($targetPath, $contents);
+            copy($srcPath, $targetPath);
         }
     }
 
@@ -176,13 +174,16 @@ abstract class Filesystem
         }
     }
 
-    public static function makeDirectory(string $path, $absolutePath = false): void
+    public static function makeDirectory(string $path): void
     {
-        if (class_exists('\Storage') && !$absolutePath) {
+        if (class_exists('\Storage')) {
             \Storage::makeDirectory($path);
         }
         else {
-            mkdir($path, 0777, true);
+            try {
+                @mkdir($path, 0777, true);
+            }
+            catch (\Exception $ex) { }
         }
     }
 }
