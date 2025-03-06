@@ -8,16 +8,36 @@ use Dagstuhl\Latex\Utilities\Environment;
 use Dagstuhl\Latex\Utilities\Filesystem;
 use Dagstuhl\Latex\Compiler\BuildProfiles\BasicProfile;
 use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
+use GuzzleHttp\Client;
 use Phar;
 use PharData;
 use Throwable;
 
 class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
 {
-    private function getArchiveDirectory(string $suffix = ''): string
+    protected Client $httpClient;
+    protected string $apiUrl;
+    protected array $requestOptions;
+
+
+    public function __construct(LatexFile $latexFile, array $options = [])
+    {
+        parent::__construct($latexFile, $options);
+
+        $this->httpClient = new Client();
+        $this->apiUrl = config('latex.docker-latex.api-url') ?? $options['api-url'];
+        $this->requestOptions = [
+            'headers' => [
+                'Accept' => 'application/json',
+                'Authorization' => 'Bearer ' . config('latex.docker-latex.token')
+            ]
+        ];
+    }
+
+    private function getArchiveDirectory(): string
     {
         $sourceFolder = $this->latexFile->getDirectory();
-        return (config('latex.paths.temp') ?? '') .'/'.md5($sourceFolder).$suffix;
+        return (config('latex.paths.temp') ?? '') .'/'.md5($sourceFolder);
     }
 
     private function getTarFilePath(string $extension = ''): string
