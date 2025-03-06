@@ -15,7 +15,17 @@ $mode = $_GET['mode'] ?? 'full';
 
 
 $latexFile = new LatexFile($path);
-$profile = new DockerLatexProfile($latexFile);
+$profile = new DockerLatexProfile($latexFile, [ 'profile' => 'texlive:2024' ]);
+
+$path = $profile->archiveSource();
+
+// $profile->unTarArchive();
+
+// $profile->compile();
+
+exit();
+
+
 $latexCompiler = new LatexCompiler($latexFile, $profile);
 
 if ($mode === 'version') {

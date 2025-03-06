@@ -6,6 +6,10 @@ use Dagstuhl\Latex\LatexStructures\LatexFile;
 
 interface BuildProfileInterface
 {
+    const MODE_FULL = 'full';
+    const MODE_LATEX_ONLY = 'latex-only';
+    const MODE_BIBTEX_ONLY = 'bibtex-only';
+
     public function __construct(LatexFile $latexFile);
 
     public function setLatexFile(LatexFile $latexFile);

@@ -10,10 +10,6 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 {
     use ParseExitCodes;
 
-    const MODE_FULL = 'full';
-    const MODE_LATEX_ONLY = 'latex-only';
-    const MODE_BIBTEX_ONLY = 'bibtex-only';
-
     private function getProfileCommand(): string
     {
         return __DIR__.'/pdflatex-bibtex-local.sh';
@@ -34,15 +30,15 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
         return $shellEscape;
     }
 
-    public function getEnvironmentVariables(array $options= []): string
+    public function getEnvironmentVariables(array $options = [], $asArray = false): array|string
     {
         $bibMode = count($this->latexFile->getBibliography()->getPathsToUsedBibFiles()) > 0
             ? 'bibtex'
             : 'none';
 
         $env = [
-            'MODE' => $options['MODE'] ?? $options['mode'] ?? self::MODE_FULL,
-            'BIB_MODE' => $options['BIB_MODE'] ?? $options['bibMode'] ?? $bibMode,
+            'MODE' => $options['mode'] ?? $this->globalOptions['mode'] ?? self::MODE_FULL,
+            'BIB_MODE' => $options['bibMode'] ?? $this->globalOptions['bibMode'] ?? $bibMode,
             'LATEX_OPTIONS' => $this->getShellEscapeParameter()
         ];
 
@@ -73,6 +69,10 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
         if (!empty($latexUserHome)) {
             $env['HOME'] = $latexUserHome;
+        }
+
+        if ($asArray) {
+            return $env;
         }
 
         $envString = '';
