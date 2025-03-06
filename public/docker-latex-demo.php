@@ -3,7 +3,7 @@
 require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../config.php';
 
-use Dagstuhl\Latex\Compiler\BuildProfiles\WebService\DockerLatexProfile;
+use Dagstuhl\Latex\Compiler\BuildProfiles\DockerLatex\DockerLatexProfile;
 use Dagstuhl\Latex\Compiler\LatexCompiler;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 
@@ -15,13 +15,13 @@ $mode = $_GET['mode'] ?? 'full';
 
 
 $latexFile = new LatexFile($path);
-$profile = new DockerLatexProfile($latexFile, [ 'profile' => 'texlive:2024' ]);
+$profile = new DockerLatexProfile($latexFile, [ 'docker-profile' => 'texlive:2024' ]);
 
-$path = $profile->archiveSource();
+// $path = $profile->archiveSource();
 
 // $profile->unTarArchive();
 
-// $profile->compile();
+$profile->compile();
 
 exit();
 

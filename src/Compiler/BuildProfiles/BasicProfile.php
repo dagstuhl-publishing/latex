@@ -14,13 +14,13 @@ class BasicProfile
     protected array $globalOptions = [];
 
 
-    public function __construct(LatexFile $latexFile = NULL, array $globalOptions = [])
+    public function __construct(LatexFile $latexFile = NULL, array $globalGlobalOptions = [])
     {
         if ($latexFile !== NULL) {
             $this->latexFile = $latexFile;
         }
 
-        $this->globalOptions = $globalOptions;
+        $this->globalOptions = $globalGlobalOptions;
     }
 
     public function setLatexFile(LatexFile $latexFile): void

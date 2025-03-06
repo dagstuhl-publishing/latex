@@ -2,9 +2,11 @@
 
 namespace Dagstuhl\Latex\Compiler\BuildProfiles\PdfLatexBibtexLocal;
 
-use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
-use Dagstuhl\Latex\Utilities\Filesystem;
 use Dagstuhl\Latex\Compiler\BuildProfiles\BasicProfile;
+use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
+use Dagstuhl\Latex\Compiler\BuildProfiles\ParseExitCodes;
+use Dagstuhl\Latex\Utilities\Environment;
+use Dagstuhl\Latex\Utilities\Filesystem;
 
 class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInterface
 {
@@ -71,16 +73,9 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
             $env['HOME'] = $latexUserHome;
         }
 
-        if ($asArray) {
-            return $env;
-        }
-
-        $envString = '';
-        foreach($env as $key=>$value) {
-            $envString .= ' ' . $key . '=' . escapeshellarg($value);
-        }
-
-        return trim($envString);
+        return $asArray
+            ? $env
+            : Environment::toString($env);
     }
 
 
