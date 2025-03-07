@@ -91,7 +91,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
 
     public function archiveSource(): ?string
     {
-        $sourceFolder = $this->latexFile->getDirectory();
+        $sourceFolder = Filesystem::storagePath($this->latexFile->getDirectory());
         $targetFolder = $this->getArchiveDirectory();
         $targetFile = $this->getTarFilePath();
 
