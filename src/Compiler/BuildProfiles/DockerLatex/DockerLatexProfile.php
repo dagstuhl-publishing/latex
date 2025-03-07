@@ -103,6 +103,9 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
 
         $this->unlinkArchive($targetFile);
 
+        // remove PDF to save resources/traffic
+        Filesystem::delete($this->latexFile->getPath('pdf'));
+
         $archive = new PharData($targetFile);
         $archive->buildFromDirectory($sourceFolder);
         $archive->compress(Phar::GZ);
