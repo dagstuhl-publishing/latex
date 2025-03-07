@@ -85,6 +85,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         // to resolve phar caching issue
         try {
             PharData::unlinkArchive($path);
+            unlink($path);
         }
         catch(Throwable $ex) {}
     }
@@ -101,11 +102,10 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         Filesystem::deleteDirectory($targetFolder, true);
         Filesystem::makeDirectory($targetFolder, true);
 
-        $this->unlinkArchive($targetFile);
-
         // remove PDF to save resources/traffic
         Filesystem::delete($this->latexFile->getPath('pdf'));
 
+        $this->unlinkArchive($targetFile);
         $archive = new PharData($targetFile);
         $archive->buildFromDirectory($sourceFolder);
         $archive->compress(Phar::GZ);
@@ -121,17 +121,16 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
 
     public function unTarArchive(): void
     {
-        $targetFolder = $this->latexFile->getDirectory();
-
-        exec('cd '.$this->getArchiveDirectory(). ' && gunzip '.escapeshellarg($this->getTarFilePath('gz')));
+        exec('cd '.$this->getArchiveDirectory(). ' && gunzip -f '.escapeshellarg($this->getTarFilePath('gz')));
 
         // clean target folder and extract tar there
-        Filesystem::deleteDirectory($targetFolder, true);
-        Filesystem::makeDirectory($targetFolder, true);
+        $targetFolder = $this->latexFile->getDirectory();
+        Filesystem::deleteDirectory($targetFolder);
+        Filesystem::makeDirectory($targetFolder);
 
         $archive = new PharData($this->getTarFilePath());
         $archive->delete('.');
-        $archive->extractTo($targetFolder);
+        $archive->extractTo(Filesystem::storagePath($targetFolder));
         unset($archive);
         $this->unlinkArchive($this->getTarFilePath());
 
