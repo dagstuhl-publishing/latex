@@ -123,7 +123,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
     {
         $targetFolder = $this->latexFile->getDirectory();
 
-        exec('cd '.$this->getArchiveDirectory(). ' && gunzip '.$this->getTarFilePath('gz'));
+        exec('cd '.$this->getArchiveDirectory(). ' && gunzip '.escapeshellarg($this->getTarFilePath('gz')));
 
         // clean target folder and extract tar there
         Filesystem::deleteDirectory($targetFolder, true);
