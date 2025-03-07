@@ -15,13 +15,16 @@ $mode = $_GET['mode'] ?? 'full';
 
 
 $latexFile = new LatexFile($path);
-$profile = new DockerLatexProfile($latexFile, [ 'docker-profile' => 'texlive:2024' ]);
+$profile = new DockerLatexProfile();
+$latexCompiler = new LatexCompiler($latexFile, $profile);
+$latexCompiler->compile(['mode' => 'latex-only']);
 
-// $path = $profile->archiveSource();
-
-// $profile->unTarArchive();
-
-$profile->compile();
+var_dump(
+    $latexCompiler->getProfileOutput(),
+    $latexCompiler->getLatexExitCode(),
+    $latexCompiler->getLatexLog(),
+    $latexCompiler->getBibTexLog()
+);
 
 exit();
 

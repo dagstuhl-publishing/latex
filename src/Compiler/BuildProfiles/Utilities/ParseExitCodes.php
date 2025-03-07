@@ -1,6 +1,6 @@
 <?php
 
-namespace Dagstuhl\Latex\Compiler\BuildProfiles;
+namespace Dagstuhl\Latex\Compiler\BuildProfiles\Utilities;
 
 trait ParseExitCodes
 {

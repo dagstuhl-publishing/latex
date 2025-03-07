@@ -4,13 +4,15 @@ namespace Dagstuhl\Latex\Compiler\BuildProfiles\PdfLatexBibtexLocal;
 
 use Dagstuhl\Latex\Compiler\BuildProfiles\BasicProfile;
 use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
-use Dagstuhl\Latex\Compiler\BuildProfiles\ParseExitCodes;
+use Dagstuhl\Latex\Compiler\BuildProfiles\Utilities\GetRequestedLatexVersion;
+use Dagstuhl\Latex\Compiler\BuildProfiles\Utilities\ParseExitCodes;
 use Dagstuhl\Latex\Utilities\Environment;
 use Dagstuhl\Latex\Utilities\Filesystem;
 
 class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInterface
 {
     use ParseExitCodes;
+    use GetRequestedLatexVersion;
 
     private function getProfileCommand(): string
     {
@@ -48,9 +50,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
         $latexUserHome = NULL;
 
         if (function_exists('config')) {
-            $replacement = str_replace('%__useTexLiveVersion{', '\useTexLiveVersion{', $this->latexFile->getContents());
-            $this->latexFile->setContents($replacement);
-            $selectedVersion = $this->latexFile->getMacro('useTexLiveVersion')?->getArgument();
+            $selectedVersion = static::getRequestedLatexVersion($this->latexFile);
             $versionPath = config('latex.paths.bin-versions');
 
             $oldVersions = config('latex.old-versions');

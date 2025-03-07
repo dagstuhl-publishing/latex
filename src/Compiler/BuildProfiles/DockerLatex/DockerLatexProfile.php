@@ -4,13 +4,14 @@ namespace Dagstuhl\Latex\Compiler\BuildProfiles\DockerLatex;
 
 use Dagstuhl\Latex\Compiler\BuildProfiles\BasicProfile;
 use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
-use Dagstuhl\Latex\Compiler\BuildProfiles\ParseExitCodes;
 use Dagstuhl\Latex\Compiler\BuildProfiles\PdfLatexBibtexLocal\PdfLatexBibtexLocalProfile;
+use Dagstuhl\Latex\Compiler\BuildProfiles\Utilities\GetRequestedLatexVersion;
+use Dagstuhl\Latex\Compiler\BuildProfiles\Utilities\ParseExitCodes;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 use Dagstuhl\Latex\Utilities\Environment;
 use Dagstuhl\Latex\Utilities\Filesystem;
-use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\GuzzleException;
 use Phar;
 use PharData;
 use Throwable;
@@ -18,28 +19,49 @@ use Throwable;
 class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
 {
     use ParseExitCodes;
+    use GetRequestedLatexVersion;
 
     protected Client $httpClient;
     protected string $apiUrl;
     protected array $headers;
+
+    protected string $dockerProfile;
+
 
     const BUILD_SCRIPT = __DIR__.'/../PdfLatexBibtexLocal/pdflatex-bibtex-local.sh';
     const BUILD_SCRIPT_NAME = '_latex-build.sh';
     const DEFAULT_DOCKER_PROFILE = 'texlive:2024';
 
 
-    public function __construct(LatexFile $latexFile, array $globalOptions = [])
+    public function __construct(LatexFile $latexFile = NULL, array $globalOptions = [])
     {
-        $globalOptions['docker-profile'] = $globalOptions['docker-profile'] ?? static::DEFAULT_DOCKER_PROFILE;
-
         parent::__construct($latexFile, $globalOptions);
 
+        if ($latexFile !== NULL) {
+            $this->setLatexFile($latexFile);
+        }
+
         $this->httpClient = new Client();
-        $this->apiUrl = config('latex.docker-latex.api-url') ?? $globalOptions['api-url'];
+        $this->apiUrl = config('latex.profiles.docker-latex.api-url') ?? $globalOptions['api-url'];
         $this->headers = [
             'Accept' => 'application/json',
-            'Authorization' => 'Bearer ' . config('latex.docker-latex.token')
+            'Authorization' => 'Bearer ' . config('latex.profiles.docker-latex.token')
         ];
+    }
+
+    public function setLatexFile(?LatexFile $latexFile): void
+    {
+        $version = NULL;
+        if ($latexFile !== NULL) {
+            $version = static::getRequestedLatexVersion($latexFile);
+            if (!empty($version)) {
+                $version = 'texlive:' . $version;
+            }
+        }
+
+        $this->dockerProfile = $version ?? $globalOptions['docker-profile'] ?? static::DEFAULT_DOCKER_PROFILE;
+
+        parent::setLatexFile($latexFile);
     }
 
     private function getArchiveDirectory(): string
@@ -98,7 +120,6 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
     {
         $targetFolder = $this->latexFile->getDirectory();
 
-        // unzip to temp folder
         exec('cd '.$this->getArchiveDirectory(). ' && gunzip '.$this->getTarFilePath('gz'));
 
         // clean target folder and extract tar there
@@ -106,6 +127,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         Filesystem::makeDirectory($targetFolder, true);
 
         $archive = new PharData($this->getTarFilePath());
+        $archive->delete('.');
         $archive->extractTo($targetFolder);
         unset($archive);
         $this->unlinkArchive($this->getTarFilePath());
@@ -114,60 +136,78 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
     }
 
 
-    private function createContext(string $command, string $pathToArchive): ?array
+    /**
+     * @throws GuzzleException
+     */
+    private function createContext(string $command, string $pathToArchive): array
     {
-        try {
-            $response = $this->httpClient->request('POST', $this->apiUrl . '/context/new', [
-                'headers' => $this->headers,
-                'multipart' => [
-                    [
-                        'name' => 'profile',
-                        'contents' => $this->globalOptions['docker-profile']
-                    ],
-                    [
-                        'name' => 'texFile',
-                        'contents' => $this->latexFile->getFilename()
-                    ],
-                    [
-                        'name' => 'logFile',
-                        'contents' => preg_replace('/\.tex$/', '.log', $this->latexFile->getFilename())
-                    ],
-                    [
-                        'name' => 'pdfFile',
-                        'contents' => preg_replace('/\.tex$/', '.pdf', $this->latexFile->getFilename())
-                    ],
-                    [
-                        'name' => 'commands',
-                        'contents' => $command
-                    ],
-                    [
-                        'name' => 'archive',
-                        'contents' => fopen($this->getTarFilePath('gz'), 'r')
-                    ],
-                ]
-            ]);
+        $response = $this->httpClient->request('POST', $this->apiUrl . '/context/new', [
+            'headers' => $this->headers,
+            'multipart' => [
+                [
+                    'name' => 'profile',
+                    'contents' => $this->dockerProfile
+                ],
+                [
+                    'name' => 'texFile',
+                    'contents' => $this->latexFile->getFilename()
+                ],
+                [
+                    'name' => 'logFile',
+                    'contents' => preg_replace('/\.tex$/', '.log', $this->latexFile->getFilename())
+                ],
+                [
+                    'name' => 'pdfFile',
+                    'contents' => preg_replace('/\.tex$/', '.pdf', $this->latexFile->getFilename())
+                ],
+                [
+                    'name' => 'commands',
+                    'contents' => $command
+                ],
+                [
+                    'name' => 'archive',
+                    'contents' => fopen($this->getTarFilePath('gz'), 'r')
+                ],
+            ]
+        ]);
 
-            return json_decode($response->getBody()->getContents(), true);
-        }
-        catch(Exception $ex) {
-            return NULL;
-        }
+        return json_decode($response->getBody()->getContents(), true);
     }
 
-    private function build(array $context): ?array
+    /**
+     * @throws GuzzleException
+     */
+    private function buildContext(array $context): array
     {
         $context = $context['name'];
+        $response = $this->httpClient->request('POST', $this->apiUrl . '/context/'.$context.'/build', [
+            'headers' => $this->headers,
+        ]);
 
-        try {
-            $response = $this->httpClient->request('POST', $this->apiUrl . '/context/'.$context.'/build', [
-                'headers' => $this->headers,
-            ]);
+        return json_decode($response->getBody()->getContents(), true);
+    }
 
-            $status = json_decode($response->getBody()->getContents(), true);
-        }
-        catch(Exception $ex) {
-            return NULL;
-        }
+    /**
+     * @throws GuzzleException
+     */
+    private function downloadContext(array $context): void
+    {
+        $context = $context['name'];
+        $this->httpClient->request('GET', $this->apiUrl . '/context/'.$context.'/archive', [
+            'headers' => $this->headers,
+            'sink' => $this->getTarFilePath('gz')
+        ]);
+    }
+
+    /**
+     * @throws GuzzleException
+     */
+    private function deleteContext(array $context): void
+    {
+        $context = $context['name'];
+        $this->httpClient->request('DELETE', $this->apiUrl . '/context/'.$context, [
+            'headers' => $this->headers,
+        ]);
     }
 
     private function getEnvironmentVariables(array $options): array
@@ -180,34 +220,66 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         return $env;
     }
 
+    private function buildFailed(string $step, string $message): void
+    {
+        $this->profileOutput = [
+            'Build failed in Step '.$step,
+            'Error message: '.$message
+        ];
+
+        var_dump($this->profileOutput);
+
+        $this->latexExitCode = NULL;
+        $this->bibtexExitCode = NULL;
+    }
+
     public function compile(array $options = []): void
     {
-        $archive = $this->archiveSource();
-
-        if ($archive === NULL) {
-            // TODO
-        }
-
         $env = $this->getEnvironmentVariables($options);
-        $command = Environment::toString($env) . ' ./' . static::BUILD_SCRIPT_NAME;
+        $command = Environment::toString($env) . ' ./' . static::BUILD_SCRIPT_NAME. ' '.$this->latexFile->getFilename();
 
-        $context = $this->createContext($command, $archive); // TODO: choose profile in LaTeX file
+        try {
+            $step = '[archive source]';
+            $archive = $this->archiveSource();
 
-        if ($context === NULL) {
-            // TODO
+            $step = '[create context]';
+            $context = $this->createContext($command, $archive);
+
+            $step = '[build context]';
+            $status = $this->buildContext($context);
+
+            $step = '[download context]';
+            $this->downloadContext($context);
+
+            $step = '[un-compress archive]';
+            $this->unTarArchive();
+
+            $step = '[delete context]';
+            $this->deleteContext($context);
+        }
+        catch (Throwable $ex) {
+            $this->buildFailed($step, $ex->getMessage());
+            return;
         }
 
-        $status = $this->build($context);
-
-        $out = $status['buildStdOut'];
+        $out = explode("\n", trim($status['buildStdout']));
+        $this->profileOutput = $out;
         $lastLine = $out[count($out)-1];
         list($this->latexExitCode, $this->bibtexExitCode) = $this->parseExitCodes($lastLine);
-
-
     }
 
     public function getLatexVersion(): string
     {
-        // TODO: Implement getLatexVersion() method.
+        $response = $this->httpClient->request('GET', $this->apiUrl . '/profiles/'.$this->dockerProfile, [
+            'headers' => $this->headers,
+        ]);
+
+        try {
+            $result = json_decode($response->getBody()->getContents(), true);
+            return $result['latexVersion'];
+        }
+        catch(Throwable $ex) {
+            return 'Unable to determine LaTeX version: '.$ex->getMessage();
+        }
     }
 }

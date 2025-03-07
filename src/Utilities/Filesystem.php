@@ -174,9 +174,9 @@ abstract class Filesystem
         }
     }
 
-    public static function makeDirectory(string $path): void
+    public static function makeDirectory(string $path, bool $absolutePath = false): void
     {
-        if (class_exists('\Storage')) {
+        if (class_exists('\Storage') AND !$absolutePath) {
             \Storage::makeDirectory($path);
         }
         else {

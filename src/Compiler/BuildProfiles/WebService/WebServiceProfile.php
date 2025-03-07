@@ -4,7 +4,7 @@ namespace Dagstuhl\Latex\Compiler\BuildProfiles\WebService;
 
 use Dagstuhl\Latex\Compiler\BuildProfiles\BasicProfile;
 use Dagstuhl\Latex\Compiler\BuildProfiles\BuildProfileInterface;
-use Dagstuhl\Latex\Compiler\BuildProfiles\ParseExitCodes;
+use Dagstuhl\Latex\Compiler\BuildProfiles\Utilities\ParseExitCodes;
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 use Dagstuhl\Latex\Utilities\Filesystem;
 
