@@ -27,7 +27,9 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
 
         if (str_contains($latexContents, '\begin{minted}')
             OR str_contains($latexContents, '\usepackage{minted}')
-            OR str_contains($latexContents, '\inputminted')) {
+            OR str_contains($latexContents, '\inputminted')
+            OR str_contains($latexContents, '\tikzexternalize')
+        ) {
             $shellEscape = '-shell-escape ';
         }
 
