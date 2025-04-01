@@ -78,15 +78,6 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         return $this->getArchiveDirectory() . '/' . $texFolderName . '.tar' . $extension;
     }
 
-    private function unlinkArchive(string $path): void
-    {
-        // to resolve phar caching issue
-        try {
-            unlink($path);
-        }
-        catch(Throwable $ex) {}
-    }
-
     public function archiveSource(array $options): ?string
     {
         $sourceFolder = Filesystem::storagePath($this->latexFile->getDirectory());
@@ -147,6 +138,14 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
      */
     private function createContext(string $command, string $pathToArchive): array
     {
+        $archiveType = 'unknown';
+        if (str_ends_with($pathToArchive, '.tar.gz')) {
+            $archiveType = 'tar.gz';
+        }
+        elseif(str_ends_with($pathToArchive, '.tar')) {
+            $archiveType = 'tar';
+        }
+
         $response = $this->httpClient->request('POST', $this->apiUrl . '/context/new', [
             'headers' => $this->headers,
             'multipart' => [
@@ -172,8 +171,12 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
                 ],
                 [
                     'name' => 'archive',
-                    'contents' => fopen($this->getTarFilePath('gz'), 'r')
+                    'contents' => fopen($pathToArchive, 'r')
                 ],
+                [
+                    'name' => 'archiveType',
+                    'contents' => $archiveType
+                ]
             ]
         ]);
 
