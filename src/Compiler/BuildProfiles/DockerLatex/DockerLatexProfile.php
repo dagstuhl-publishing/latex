@@ -12,8 +12,6 @@ use Dagstuhl\Latex\Utilities\Environment;
 use Dagstuhl\Latex\Utilities\Filesystem;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
-use Phar;
-use PharData;
 use Throwable;
 
 class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
@@ -84,13 +82,12 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
     {
         // to resolve phar caching issue
         try {
-            PharData::unlinkArchive($path);
             unlink($path);
         }
         catch(Throwable $ex) {}
     }
 
-    public function archiveSource(): ?string
+    public function archiveSource(array $options): ?string
     {
         $sourceFolder = Filesystem::storagePath($this->latexFile->getDirectory());
         $targetFolder = $this->getArchiveDirectory();
@@ -105,34 +102,41 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         // remove PDF to save resources/traffic
         Filesystem::delete($this->latexFile->getPath('pdf'));
 
-        $this->unlinkArchive($targetFile);
-        $archive = new PharData($targetFile);
-        $archive->buildFromDirectory($sourceFolder);
-        $archive->compress(Phar::GZ);
-        unset($archive);
-        $this->unlinkArchive($targetFile);
+        $tarCommand = 'cd '.escapeshellarg($sourceFolder). ' && tar -cf '.$targetFile.' .';
 
-        $targetFile .= '.gz';
+        exec($tarCommand);
+
+        if (($options['gzip'] ?? $this->globalOptions['gzip'] ?? true) !== false) {
+            $zipCommand = 'cd ' . escapeshellarg($sourceFolder) . ' && gzip ' . $targetFile;
+            exec($zipCommand);
+
+            $targetFile .= '.gz';
+        }
 
         return file_exists($targetFile)
             ? $targetFile
             : NULL;
     }
 
-    public function unTarArchive(): void
+    public function unTarArchive(array $options): void
     {
-        exec('cd '.$this->getArchiveDirectory(). ' && gunzip -f '.escapeshellarg($this->getTarFilePath('gz')));
+        if (($options['gzip'] ?? $this->globalOptions['gzip'] ?? true) !== false) {
+            $unzipCommand = 'cd ' . $this->getArchiveDirectory() . ' && ' .
+                'gunzip -f ' . escapeshellarg($this->getTarFilePath('gz'));
+
+            exec($unzipCommand);
+        }
+
+        $targetFolder = $this->latexFile->getDirectory();
 
         // clean target folder and extract tar there
-        $targetFolder = $this->latexFile->getDirectory();
         Filesystem::deleteDirectory($targetFolder);
         Filesystem::makeDirectory($targetFolder);
 
-        $archive = new PharData($this->getTarFilePath());
-        $archive->delete('.');
-        $archive->extractTo(Filesystem::storagePath($targetFolder));
-        unset($archive);
-        $this->unlinkArchive($this->getTarFilePath());
+        $unTarCommand = 'cd '.escapeshellarg(Filesystem::storagePath($targetFolder)). ' && '.
+            'tar -xf '.$this->getTarFilePath(). ' -C '.$targetFolder;
+
+        exec($unTarCommand);
 
         Filesystem::deleteDirectory($this->getArchiveDirectory());
     }
@@ -242,7 +246,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
 
         try {
             $step = '[archive source]';
-            $archive = $this->archiveSource();
+            $archive = $this->archiveSource($options);
 
             $step = '[create context]';
             $context = $this->createContext($command, $archive);
@@ -254,7 +258,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
             $this->downloadContext($context);
 
             $step = '[un-compress archive]';
-            $this->unTarArchive();
+            $this->unTarArchive($options);
 
             $step = '[delete context]';
             $this->deleteContext($context);
