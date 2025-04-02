@@ -93,12 +93,12 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         // remove PDF to save resources/traffic
         Filesystem::delete($this->latexFile->getPath('pdf'));
 
-        $tarCommand = 'cd '.escapeshellarg($sourceFolder). ' && tar -cf '.$targetFile.' .';
+        $tarCommand = 'cd ' . escapeshellarg($sourceFolder) . ' && tar -cf ' . escapeshellarg($targetFile) . ' .';
 
         exec($tarCommand);
 
         if (($options['gzip'] ?? $this->globalOptions['gzip'] ?? true) !== false) {
-            $zipCommand = 'cd ' . escapeshellarg($sourceFolder) . ' && gzip ' . $targetFile;
+            $zipCommand = 'cd ' . escapeshellarg($targetFolder) . ' && gzip ' . escapeshellarg($targetFile);
             exec($zipCommand);
 
             $targetFile .= '.gz';
@@ -109,13 +109,15 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
             : NULL;
     }
 
-    public function unTarArchive(array $options): void
+    public function unTarArchive(array $options, string $pathToArchive): void
     {
         if (($options['gzip'] ?? $this->globalOptions['gzip'] ?? true) !== false) {
-            $unzipCommand = 'cd ' . $this->getArchiveDirectory() . ' && ' .
-                'gunzip -f ' . escapeshellarg($this->getTarFilePath('gz'));
+            $unzipCommand = 'cd ' . escapeshellarg($this->getArchiveDirectory()) . ' && ' .
+                'gunzip -f ' . escapeshellarg($pathToArchive);
 
             exec($unzipCommand);
+
+            $pathToArchive = preg_replace('/\.gz$/', '', $pathToArchive);
         }
 
         $targetFolder = $this->latexFile->getDirectory();
@@ -125,7 +127,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         Filesystem::makeDirectory($targetFolder);
 
         $unTarCommand = 'cd '.escapeshellarg(Filesystem::storagePath($targetFolder)). ' && '.
-            'tar -xf '.$this->getTarFilePath(). ' -C '.$targetFolder;
+            'tar -xf '.escapeshellarg($pathToArchive);
 
         exec($unTarCommand);
 
@@ -138,14 +140,6 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
      */
     private function createContext(string $command, string $pathToArchive): array
     {
-        $archiveType = 'unknown';
-        if (str_ends_with($pathToArchive, '.tar.gz')) {
-            $archiveType = 'tar.gz';
-        }
-        elseif(str_ends_with($pathToArchive, '.tar')) {
-            $archiveType = 'tar';
-        }
-
         $response = $this->httpClient->request('POST', $this->apiUrl . '/context/new', [
             'headers' => $this->headers,
             'multipart' => [
@@ -172,10 +166,6 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
                 [
                     'name' => 'archive',
                     'contents' => fopen($pathToArchive, 'r')
-                ],
-                [
-                    'name' => 'archiveType',
-                    'contents' => $archiveType
                 ]
             ]
         ]);
@@ -199,12 +189,24 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
     /**
      * @throws GuzzleException
      */
-    private function downloadContext(array $context): void
+    private function downloadContext(array $context, string $pathToArchive): void
     {
         $context = $context['name'];
+
+        $archiveType = 'unknown';
+        if (str_ends_with($pathToArchive, '.tar.gz')) {
+            $archiveType = 'tar.gz';
+        }
+        elseif(str_ends_with($pathToArchive, '.tar')) {
+            $archiveType = 'tar';
+        }
+
         $this->httpClient->request('GET', $this->apiUrl . '/context/'.$context.'/archive', [
             'headers' => $this->headers,
-            'sink' => $this->getTarFilePath('gz')
+            'query' => [
+                'archiveType' => $archiveType,
+            ],
+            'sink' => $pathToArchive,
         ]);
     }
 
@@ -258,10 +260,10 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
             $status = $this->buildContext($context);
 
             $step = '[download context]';
-            $this->downloadContext($context);
+            $this->downloadContext($context, $archive);
 
             $step = '[un-compress archive]';
-            $this->unTarArchive($options);
+            $this->unTarArchive($options, $archive);
 
             $step = '[delete context]';
             $this->deleteContext($context);
