@@ -40,7 +40,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
         }
 
         $this->httpClient = new Client();
-        $this->apiUrl = config('latex.profiles.docker-latex.api-url') ?? $globalOptions['api-url'];
+        $this->apiUrl = config('latex.profiles.docker-latex.api-url') ?? $this->globalOptions['api-url'];
         $this->headers = [
             'Accept' => 'application/json',
             'Authorization' => 'Bearer ' . config('latex.profiles.docker-latex.token')
@@ -57,7 +57,7 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
             }
         }
 
-        $this->dockerProfile = $version ?? $globalOptions['docker-profile'] ?? static::DEFAULT_DOCKER_PROFILE;
+        $this->dockerProfile = $version ?? $this->globalOptions['docker-profile'] ?? static::DEFAULT_DOCKER_PROFILE;
 
         parent::setLatexFile($latexFile);
     }
