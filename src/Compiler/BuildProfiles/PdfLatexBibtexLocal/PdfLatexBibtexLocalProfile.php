@@ -92,7 +92,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
     public function compile(array $options = []): void
     {
         $absolutePath = Filesystem::storagePath($this->latexFile->getPath());
-        $command = $this->getEnvironmentVariables($options) . ' ' . $this->getProfileCommand(). ' '. $absolutePath;
+        $command = $this->getEnvironmentVariables($options) . ' ' . $this->getProfileCommand(). ' '. escapeshellarg($absolutePath);
 
         exec($command, $out);
 
