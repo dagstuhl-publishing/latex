@@ -233,10 +233,34 @@ class LatexFile extends LatexString
     /**
      * Replace different syntax variants for declaration of new commands with: \newcommand{...}{...}
      */
-    public function normalizeNewCommands(): void
+    public function normalizeNewCommands(bool $fast = false): void
     {
         $contents = $this->getContents();
 
+        // fast variant
+        if ($fast) {
+            // move \newcommand to the beginning of a line
+            $contents = preg_replace('/([^\n])(\\\\newcommand|\\\\renewcommand)/', '$1' . "\n" . '$2', $contents);
+
+            // remove blanks between arguments
+            $contents = preg_replace(
+                '/(\\\\newcommand\{.{1,20}\})(|\[.{1,20}\])(|\[.{1,20}\])(\n|\s+)(\{)/smU',
+                '$1$2$3$5', $contents);
+
+            // add curly braces if missing for first argument
+            $contents = preg_replace('/(\\\\newcommand)(\\\\.+)( \{|\{|\[)/U', '$1{$2}$3', $contents);
+
+            // add curly braces for both arguments if necessary
+            $contents = preg_replace(
+                '/(\\\\newcommand)(\\\\[^\{]+)(\\\\[^\{]+)(\n)/U',
+                '$1{$2}{$3}$4',
+                $contents);
+
+            $this->setContents($contents);
+            return;
+        }
+
+        // careful variant
         $scanner = new LatexScanner($contents);
 
         $newContents = '';
@@ -267,27 +291,6 @@ class LatexFile extends LatexString
         }
 
         $this->setContents($newContents);
-
-        return;
-
-        // move \newcommand to the beginning of a line
-        $contents = preg_replace('/([^\n])(\\\\newcommand|\\\\renewcommand)/', '$1'."\n".'$2', $contents);
-
-        // remove blanks between arguments
-        $contents = preg_replace(
-            '/(\\\\newcommand\{.{1,20}\})(|\[.{1,20}\])(|\[.{1,20}\])(\n|\s+)(\{)/smU',
-            '$1$2$3$5', $contents);
-
-        // add curly braces if missing for first argument
-        $contents = preg_replace('/(\\\\newcommand)(\\\\.+)( \{|\{|\[)/U', '$1{$2}$3', $contents);
-
-        // add curly braces for both arguments if necessary
-        $contents = preg_replace(
-            '/(\\\\newcommand)(\\\\[^\{]+)(\\\\[^\{]+)(\n)/U',
-            '$1{$2}{$3}$4',
-            $contents);
-
-        $this->setContents($contents);
     }
 
     /**

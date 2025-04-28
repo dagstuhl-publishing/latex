@@ -325,7 +325,7 @@ class Bibliography
 
             $metaString = new MetadataString($entry, $this->latexFile);
 
-            $metaString->expandMacros()->expandMacros()->normalizeMacro(true);
+            $metaString->expandMacros(true)->expandMacros(true)->normalizeMacro(true);
 
             $cleanEntry = $metaString->getString();
 

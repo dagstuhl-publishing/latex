@@ -296,7 +296,7 @@ class MetadataString
         return $this;
     }
 
-    public function expandMacros(): static
+    public function expandMacros(bool $fast = false): static
     {
         if ($this->latexFile === NULL) {
             return $this;
@@ -306,7 +306,7 @@ class MetadataString
 
         $this->backupLatexFile();
 
-        $this->latexFile->normalizeNewCommands();
+        $this->latexFile->normalizeNewCommands($fast);
         $allCommands = $this->latexFile->getCommands();
 
         $commandList = [];
