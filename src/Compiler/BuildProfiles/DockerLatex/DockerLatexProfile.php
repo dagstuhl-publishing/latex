@@ -120,12 +120,12 @@ class DockerLatexProfile extends BasicProfile implements BuildProfileInterface
             $pathToArchive = preg_replace('/\.gz$/', '', $pathToArchive);
         }
 
-        $targetFolder = $this->latexFile->getDirectory();
-
         // clean target folder and extract tar there
-        Filesystem::deleteDirectory($targetFolder);
-        Filesystem::makeDirectory($targetFolder);
+        foreach (['aux', 'log', 'out', 'pdf', 'vtc', 'bbl', 'blg'] as $ext) {
+            Filesystem::delete($this->latexFile->getPath($ext));
+        }
 
+        $targetFolder = $this->latexFile->getDirectory();
         $unTarCommand = 'cd '.escapeshellarg(Filesystem::storagePath($targetFolder)). ' && '.
             'tar -xf '.escapeshellarg($pathToArchive);
 
