@@ -57,6 +57,7 @@ abstract class LatexPatterns
     const COMMENT_AT_END_OF_LINE = '/\%.*\n\h*/';
     // but blank lines following a comment are preserved
     const COMMENT_FOLLOWED_BY_BLANK_LINE = '/\%.*\n( *)\n/';
+    // old expression: const COMMENT_FOLLOWED_BY_BLANK_LINE = '/\%.*\n\s*\n/';
 
     const NEW_COMMAND_SAME_LINE = '/([^\n ])(\\\\newcommand|\\\\renewcommand)/';
 
