@@ -97,7 +97,7 @@ class MetadataString
         return $this->normalizeMacro()->getString();
     }
 
-    public function normalizeMacro(bool $forBib = false): static
+    public function normalizeMacro(bool $forBib = false, bool $removeCurlyBraces = true): static
     {
         $urlMgr = $this->saveMacros([ 'url', 'href' ]);
 
@@ -113,7 +113,9 @@ class MetadataString
         $this->convertMathFreeString($forBib);
 
         // remove remaining curly braces -> check carefully
-        $this->string = preg_replace('/{(.*)}/smU', '$1', $this->string);
+        if ($removeCurlyBraces) {
+            $this->string = preg_replace('/{(.*)}/smU', '$1', $this->string);
+        }
 
         // re-insert math parts
         $this->restoreSnippets($mathMgr);
@@ -625,6 +627,22 @@ class MetadataString
         $latexString = new LatexString($string);
 
         $macros = $latexString->getMacros('textsuperscript');
+
+        foreach($macros as $macro) {
+            $string = str_replace($macro->getSnippet(), '', $string);
+        }
+
+        $this->string = $string;
+
+        return $this;
+    }
+
+    public function removeThanks(): static
+    {
+        $string = $this->string;
+        $latexString = new LatexString($string);
+
+        $macros = $latexString->getMacros('thanks');
 
         foreach($macros as $macro) {
             $string = str_replace($macro->getSnippet(), '', $string);

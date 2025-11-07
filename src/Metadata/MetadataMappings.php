@@ -86,8 +86,10 @@ abstract class MetadataMappings
 
         if ($metadataString->containsMacros()) {
             $metadataString->removeTextSuperscript()
+                ->removeThanks()
+                ->removeFootnotes()
                 ->expandMacros()
-                ->normalizeMacro();
+                ->normalizeMacro(false, false);
         }
         else {
             $metadataString->normalizeSimpleMacro();
