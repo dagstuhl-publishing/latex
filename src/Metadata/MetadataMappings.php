@@ -89,6 +89,7 @@ abstract class MetadataMappings
                 ->removeThanks()
                 ->removeFootnotes()
                 ->expandMacros()
+                ->removeTextCircledR()
                 ->normalizeMacro(false, false);
         }
         else {

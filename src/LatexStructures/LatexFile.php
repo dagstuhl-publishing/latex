@@ -18,6 +18,8 @@ class LatexFile extends LatexString
 
     private string $path;
     private ?array $labels = NULL;
+    private bool $normalizedNewCommands = false;
+
 
     public function __construct(string $pathToFile)
     {
@@ -235,6 +237,11 @@ class LatexFile extends LatexString
      */
     public function normalizeNewCommands(bool $fast = false): void
     {
+        if ($fast AND $this->normalizedNewCommands) {
+            return;
+        }
+
+        $this->normalizedNewCommands = true;
         $contents = $this->getContents();
 
         // fast variant

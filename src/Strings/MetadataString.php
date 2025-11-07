@@ -619,6 +619,15 @@ class MetadataString
     }
 
     /**
+     * \textcircled{r} used to indicate that the order of authors has been randomized
+     */
+    public function removeTextCircledR(): static
+    {
+        $this->string = str_replace('\textcircled{r}', '', $this->string);
+        return $this;
+    }
+
+    /**
      * removes \textsuperscript{...} macros typically used in author macros
      */
     public function removeTextSuperscript(): static
