@@ -3,10 +3,13 @@
 namespace Dagstuhl\Latex\Parser;
 
 // Manual loading of the required files
+require_once __DIR__ . '/Char.php';
 require_once __DIR__ . '/Lexer.php';
 require_once __DIR__ . '/ParseTreeNode.php';
 require_once __DIR__ . '/ParseException.php';
+require_once __DIR__ . '/CatcodeState.php';
 require_once __DIR__ . '/LatexParser.php';
+require_once __DIR__ . '/TokenType.php';
 require_once __DIR__ . '/Token.php';
 require_once __DIR__ . '/TreeNodes/EnvelopeNode.php';
 require_once __DIR__ . '/TreeNodes/RootNode.php';

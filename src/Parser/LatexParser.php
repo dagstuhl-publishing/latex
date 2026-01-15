@@ -14,17 +14,6 @@ use Dagstuhl\Latex\Parser\TreeNodes\TextNode;
 use Dagstuhl\Latex\Parser\TreeNodes\VerbNode;
 use Dagstuhl\Latex\Parser\TreeNodes\WhitespaceNode;
 
-/**
- * Tracks the internal state of \catcode command resolution.
- */
-enum CatcodeState
-{
-    case IDLE;
-    case EXPECTING_TARGET;
-    case EXPECTING_VALUE_OR_EQUALS;
-    case EXPECTING_VALUE;
-}
-
 class LatexParser
 {
     private array $mathEnvironments = [
@@ -127,6 +116,9 @@ class LatexParser
         return $root;
     }
 
+    /**
+     * @throws ParseException
+     */
     private function handleCatcodeState(Token $token, string $raw, Lexer $lexer, CatcodeState &$state, ?int &$pendingChar): void {
         // Whitespace and Comments are "transparent"—they don't break the
         // assignment chain, but they also don't provide targets/values.
@@ -157,6 +149,7 @@ class LatexParser
                         $pendingChar = $val;
                         $state = CatcodeState::EXPECTING_VALUE_OR_EQUALS;
                         $raw = ltrim(substr($raw, $consumed));
+                        // falls through
                     } else {
                         $state = CatcodeState::IDLE;
                         break;
@@ -244,8 +237,11 @@ class LatexParser
      */
     private function reduceNode(array &$stack, Token $closer, string $raw, array &$toggleStack, $lexer): void
     {
-        $isMatch = false;
-        if (!empty($toggleStack)) {
+        $openerRaw = null;
+
+        if (empty($toggleStack)) {
+            $isMatch = false;
+        } else {
             $openerRaw = end($toggleStack)[0];
             $isMatch = match($raw) {
                 '}'       => $openerRaw === '{',
@@ -369,6 +365,9 @@ class LatexParser
         return null;
     }
 
+    /**
+     * @throws ParseException
+     */
     private function handleVerbatim(array &$stack, Token $token, string $rawText, Lexer $lexer): void
     {
         $delim = $lexer->consumeRawChar()[0];
@@ -379,8 +378,7 @@ class LatexParser
 
         $body = $lexer->consumeRawUntil($delim)[0];
 
-        // Verbs are atomic and closed immediately upon consumption
-        $stack[] = new VerbNode($token->lineNumber, $body, $delim, $rawText === '\verb*');
+        $stack[] = new VerbNode($token->lineNumber, $body, $delim);
     }
 
     /**
@@ -435,10 +433,10 @@ class LatexParser
 
         return match ($token->type) {
             TokenType::COMMAND    => new CommandNode($lineNumber, $rawText),
-            TokenType::ALIGN_TAB  => new TextNode($lineNumber, $rawText),
             TokenType::COMMENT    => new CommentNode($lineNumber, $rawText),
             // MATH_TOGGLE ($ or $$) can be pushed as a TextNode initially,
             // then handled by reduceNode.
+            TokenType::ALIGN_TAB,
             TokenType::MATH_TOGGLE => new TextNode($lineNumber, $rawText),
             default => new ParseException("Unexpected token type: {$token->type->name}", $lineNumber),
         };
@@ -480,6 +478,9 @@ class LatexParser
         }
     }
 
+    /**
+     * @throws ParseException
+     */
     private function parseTeXInt(string $input, int $lineNumber, string $encoding): array
     {
         if ($input === '') {
