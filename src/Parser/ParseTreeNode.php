@@ -16,12 +16,12 @@ abstract class ParseTreeNode
     /**
      * @var the textual content of this node
      */
-    private ?string $text;
+    protected ?string $text;
 
     /**
      * @var the full LaTeX string from which this node was constructed during parsing
      */
-    private ?string $latex;
+    protected ?string $latex;
 
     public function __construct(public int $lineNumber)
     {

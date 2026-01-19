@@ -4,7 +4,6 @@ namespace Dagstuhl\Latex\Parser\TreeNodes;
 
 use Dagstuhl\Latex\Parser\ParseException;
 use Dagstuhl\Latex\Parser\ParseTreeNode;
-use http\Exception\InvalidArgumentException;
 
 abstract class EnvelopeNode extends ParseTreeNode
 {
@@ -34,7 +33,7 @@ abstract class EnvelopeNode extends ParseTreeNode
         $index = $this->getNormalizedIndex($index);
 
         if ($index < 1 || $index > $this->getChildCount() - 1) {
-            throw new \InvalidArgumentException("Index out of bounds: " . $index);
+            throw new \Exception("Index out of bounds: " . $index);
         }
 
         parent::addChild($node, $index);
@@ -48,7 +47,7 @@ abstract class EnvelopeNode extends ParseTreeNode
         $index = $this->getNormalizedIndex($index);
 
         if ($index < 1 || $index > $this->getChildCount() - 1) {
-            throw new \InvalidArgumentException("Index out of bounds: " . $index);
+            throw new \Exception("Index out of bounds: " . $index);
         }
 
         parent::addChildren($nodes, $index);
@@ -59,7 +58,7 @@ abstract class EnvelopeNode extends ParseTreeNode
         $index = $this->getNormalizedIndex($index);
 
         if ($index < 1 || $index > $this->getChildCount() - 1) {
-            throw new \InvalidArgumentException("Index out of bounds: " . $index);
+            throw new \Exception("Index out of bounds: " . $index);
         }
 
         return parent::removeChild($index);
@@ -78,4 +77,15 @@ abstract class EnvelopeNode extends ParseTreeNode
         }
     }
 
+    public function getText(bool $trim = false): string
+    {
+        if ($this->text === null) {
+            $this->text = "";
+            $children = $this->getChildren();
+            for ($i = 1, $n = count($children) - 1; $i < $n; $i++) {
+                $this->text .= $children[$i]->getText();
+            }
+        }
+        return $trim ? trim($this->text) : $this->text;
     }
+}
