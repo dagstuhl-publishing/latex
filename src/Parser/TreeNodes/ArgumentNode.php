@@ -16,13 +16,4 @@ class ArgumentNode extends EnvelopeNode
             new TextNode($lineNumber, $delims[1])
         );
     }
-
-    public function setClosing(?ParseTreeNode $closing): void
-    {
-        if ($closing && !($closing instanceof TextNode)) {
-            throw new ParseException("The closing node of an EnvironmentNode must be a CommandNode, but is $closing", $closing->lineNumber);
-        }
-        parent::setClosing($closing);
-    }
-
 }
