@@ -8,29 +8,102 @@ namespace Dagstuhl\Latex\Parser;
 abstract class ParseTreeNode
 {
     /** @var ParseTreeNode[] */
-    protected array $children = [];
+    private array $children = [];
 
     /** Reference to the parent node for easier tree traversal */
     public ?ParseTreeNode $parent = null;
 
+    /**
+     * @var the textual content of this node
+     */
+    private ?string $text;
+
+    /**
+     * @var the full LaTeX string from which this node was constructed during parsing
+     */
+    private ?string $latex;
+
     public function __construct(public int $lineNumber)
     {
+        $this->text = null;
+        $this->latex = null;
     }
 
-    public function addChild(ParseTreeNode $node): void
+    public function addChild(?ParseTreeNode $node, ?int $index = null): void
     {
-        $node->parent = $this;
-        $this->children[] = $node;
+        if ($node !== null) {
+            $node->parent = $this;
+        }
+
+        array_splice($this->children, $this->getNormalizedIndex($index), 0, [$node]);
+
+        $ancestor = $this;
+        while ($ancestor !== null) {
+            $ancestor->text = null;
+            $ancestor->latex = null;
+            $ancestor = $ancestor->parent;
+        }
     }
 
-    public function addChildren(array $nodes): void
+    public function addChildren(array $nodes, ?int $index = null): void
     {
         foreach ($nodes as $node) {
             $node->parent = $this;
         }
 
-        // Splice into the end of the children array
-        array_splice($this->children, count($this->children), 0, $nodes);
+        array_splice($this->children, $this->getNormalizedIndex($index), 0, $nodes);
+
+        $ancestor = $this;
+        while ($ancestor !== null) {
+            $ancestor->text = null;
+            $ancestor->latex = null;
+            $ancestor = $ancestor->parent;
+        }
+    }
+
+    public function removeChild(int $index): ?ParseTreeNode
+    {
+        $index = $this->getNormalizedIndex($index);
+
+        $removed = array_splice($this->children, $index, 1);
+        $removed[0]->parent = null;
+
+        $ancestor = $this;
+        while ($ancestor !== null) {
+            $ancestor->text = null;
+            $ancestor->latex = null;
+            $ancestor = $ancestor->parent;
+        }
+
+        return $removed[0];
+    }
+
+    protected function getNormalizedIndex(?int $index): int
+    {
+        $childCount = count($this->children);
+
+        if ($index === null) {
+            $index = $childCount;
+        } else {
+            if ($index < 0) {
+                $index += $childCount;
+            }
+
+            $index = max($index, 0);
+            $index = min($index, $childCount);
+        }
+
+        return $index;
+    }
+
+    public function removeFromParent(): void
+    {
+        if ($this->parent !== null) {
+            $index = $this->parent->indexOf($this);
+            if ($index > -1) {
+                $this->parent->removeChild($index);
+            }
+        }
     }
 
     public function getChildCount(): int
@@ -40,25 +113,7 @@ abstract class ParseTreeNode
 
     public function getChild(int $index): ?ParseTreeNode
     {
-        if ($index < 0) {
-            $index += count($this->children);
-        }
-
-        return $this->children[$index] ?? null;
-    }
-
-    public function removeChild(int $index): ?ParseTreeNode
-    {
-        if ($index < 0) {
-            $index += count($this->children);
-        }
-
-        if (!isset($this->children[$index])) {
-            return null;
-        }
-
-        $removed = array_splice($this->children, $index, 1);
-        return $removed[0];
+        return $this->children[$this->getNormalizedIndex($index)] ?? null;
     }
 
     public function getChildren(): array
@@ -68,26 +123,30 @@ abstract class ParseTreeNode
 
     public function indexOf(ParseTreeNode $node): int
     {
-        $idx = array_search($node, $this->children, true);
-        return ($idx === false) ? -1 : $idx;
+        $index = array_search($node, $this->children, true);
+        return ($index === false) ? -1 : $index;
     }
 
     public function getText(bool $trim = false): string
     {
-        $text = "";
-        foreach ($this->getChildren() as $child) {
-            $text .= $child->getText();
+        if ($this->text === null) {
+            $this->text = "";
+            foreach ($this->getChildren() as $child) {
+                $this->text .= $child->getText();
+            }
         }
-        return $trim ? trim($text) : $text;
+        return $trim ? trim($this->text) : $this->text;
     }
 
     public function toLatex(): string
     {
-        $str = '';
-        foreach ($this->children as $child) {
-            $str .= $child->toLatex();
+        if ($this->latex === null) {
+            $this->latex = "";
+            foreach ($this->children as $child) {
+                $this->latex .= $child->toLatex();
+            }
         }
-        return $str;
+        return $this->latex;
     }
 
     public function toTreeString(string $indent = ''): string

@@ -2,95 +2,80 @@
 
 namespace Dagstuhl\Latex\Parser\TreeNodes;
 
+use Dagstuhl\Latex\Parser\ParseException;
 use Dagstuhl\Latex\Parser\ParseTreeNode;
+use http\Exception\InvalidArgumentException;
 
 abstract class EnvelopeNode extends ParseTreeNode
 {
     public function __construct(int $lineNumber, ParseTreeNode $opening = null, ParseTreeNode $closing = null)
     {
         parent::__construct($lineNumber);
-        $this->children = [null, null];
-        $this->setOpening($opening);
-        $this->setClosing($closing);
-    }
-
-    public function addChild(ParseTreeNode $node): void
-    {
-        $node->parent = $this;
-        array_splice($this->children, -1, 0, [$node]);
-    }
-
-    public function addChildren(array $nodes): void
-    {
-        foreach ($nodes as $node) {
-            $node->parent = $this;
-        }
-        array_splice($this->children, -1, 0, $nodes);
-    }
-
-    public function setOpening(ParseTreeNode $opening): void
-    {
+        parent::addChildren([$opening, $closing]);
         $opening->parent = $this;
-        $this->children[0] = $opening;
-    }
-
-    public function setClosing(ParseTreeNode $closing): void
-    {
         $closing->parent = $this;
-        $this->children[count($this->children) - 1] = $closing;
     }
 
     public function getOpening(): ParseTreeNode
     {
-        return $this->children[0];
+        return parent::getChild(0);
     }
 
     public function getClosing(): ParseTreeNode
     {
-        return $this->children[count($this->children) - 1];
+        return parent::getChild(parent::getChildCount() - 1);
     }
 
-    public function getChildCount(): int
+    /**
+     * @throws ParseException
+     */
+    public function addChild(?ParseTreeNode $node, ?int $index = null): void
     {
-        return max(0, count($this->children) - 2);
-    }
+        $index = $this->getNormalizedIndex($index);
 
-    public function getChild(int $index): ?ParseTreeNode
-    {
-        $count = count($this->children);
-        $internalIndex = $index + ($index < 0 ? $count - 1 : 1);
-
-        if ($internalIndex < 1 || $internalIndex > $count - 2) {
-            return null;
+        if ($index < 1 || $index > $this->getChildCount() - 1) {
+            throw new \InvalidArgumentException("Index out of bounds: " . $index);
         }
 
-        return $this->children[$internalIndex] ?? null;
+        parent::addChild($node, $index);
+    }
+
+    /**
+     * @throws ParseException
+     */
+    public function addChildren(array $nodes, ?int $index = null): void
+    {
+        $index = $this->getNormalizedIndex($index);
+
+        if ($index < 1 || $index > $this->getChildCount() - 1) {
+            throw new \InvalidArgumentException("Index out of bounds: " . $index);
+        }
+
+        parent::addChildren($nodes, $index);
     }
 
     public function removeChild(int $index): ?ParseTreeNode
     {
-        $count = count($this->children);
-        $internalIndex = $index + ($index < 0 ? $count - 1 : 1);
+        $index = $this->getNormalizedIndex($index);
 
-        if ($internalIndex < 1 || $internalIndex > $count - 2) {
-            return null;
+        if ($index < 1 || $index > $this->getChildCount() - 1) {
+            throw new \InvalidArgumentException("Index out of bounds: " . $index);
         }
 
-        $removed = array_splice($this->children, $internalIndex, 1);
-        return $removed[0];
+        return parent::removeChild($index);
     }
 
-    public function getChildren(): array
+    protected function getNormalizedIndex(?int $index): int
     {
-        return array_slice($this->children, 1, -1);
-    }
-
-    public function indexOf(ParseTreeNode $node): int
-    {
-        $idx = array_search($node, $this->children, true);
-        if ($idx === false || $idx === 0 || $idx === count($this->children) - 1) {
-            return -1;
+        if ($index === null) {
+            if ($this->getChildCount() < 2) {
+                return 0; // only happens during construction
+            } else {
+                return $this->getChildCount() - 1;
+            }
+        } else {
+            return parent::getNormalizedIndex($index);
         }
-        return $idx - 1;
     }
-}
+
+    }
