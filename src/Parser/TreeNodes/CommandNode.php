@@ -6,18 +6,14 @@ use Dagstuhl\Latex\Parser\ParseTreeNode;
 
 class CommandNode extends ParseTreeNode
 {
-    public function __construct(int $lineNumber, public readonly string $name)
+    public function __construct(int $lineNumber, string $name)
     {
         parent::__construct($lineNumber);
+        $this->addChild(new TextNode($lineNumber, $name));
     }
 
-    public function toLatex(): string
+    public function getName(): string
     {
-        return $this->name . parent::toLatex();
-    }
-
-    public function __toString(): string
-    {
-        return parent::__toString() . ": $this->name";
+        return $this->getChild(0)->getText();
     }
 }
