@@ -411,7 +411,7 @@ $t->test("Structural: Implicit close of command (\section)", function () use ($p
     }
 
     $section = $children[0];
-    if (!$section instanceof CommandNode || $section->name !== '\\section') {
+    if (!$section instanceof CommandNode || $section->getName() !== '\\section') {
         throw new ParseException("First child should be the \\section command", 1, $root);
     }
 
@@ -573,7 +573,7 @@ $t->test("Lexer: Active character (tilde ~)", function () use ($parser) {
     // We expect: TextNode('Equation'), CommandNode('~'), CommandNode('\ref'), GroupNode('{eq1}')
     $tildeNode = null;
     foreach ($children as $node) {
-        if ($node instanceof CommandNode && $node->name === '~') {
+        if ($node instanceof CommandNode && $node->getName() === '~') {
             $tildeNode = $node;
             break;
         }
@@ -701,7 +701,7 @@ $t->test("Structural: Nested command in optional argument", function () use ($pa
     $children = $root->getChildren();
     $outerCmd = $children[0];
 
-    if (!($outerCmd instanceof CommandNode) || $outerCmd->name !== '\\textbf')
+    if (!($outerCmd instanceof CommandNode) || $outerCmd->getName() !== '\\textbf')
     {
         throw new ParseException("Expected outer \\textbf command", 1, $root);
     }
@@ -717,7 +717,7 @@ $t->test("Structural: Nested command in optional argument", function () use ($pa
     }
 
     $innerCmd = $optArg->getChildren()[0];
-    if (!($innerCmd instanceof CommandNode) || $innerCmd->name !== '\\textbf')
+    if (!($innerCmd instanceof CommandNode) || $innerCmd->getName() !== '\\textbf')
     {
         throw new ParseException("Optional argument should contain an inner \\textbf CommandNode", 1, $root);
     }
