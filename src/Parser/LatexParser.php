@@ -40,11 +40,11 @@ class LatexParser
     /**
      * @throws ParseException
      */
-    public function parse(string $source): RootNode
+    public function parse(string $source): ParseTree
     {
         $lexer = new Lexer($source);
         $stack = [];
-        $toggleStack = []; // Local scope tracking
+        $delimiterStack = []; // Local scope tracking
 
         $catcodeState = CatcodeState::IDLE;
         $pendingChar = null;
@@ -55,8 +55,8 @@ class LatexParser
             $this->handleCatcodeState($token, $rawText, $lexer, $catcodeState, $pendingChar);
 
             // 1. Check for reduction first
-            if ($this->isClosingDelimiter($token, $rawText, $toggleStack)) {
-                $this->reduceNode($stack, $token, $rawText, $toggleStack, $lexer);
+            if ($this->isClosingDelimiter($stack, $token, $rawText, $delimiterStack)) {
+                $this->reduceNode($stack, $token, $rawText, $delimiterStack, $lexer);
                 continue;
             }
 
@@ -64,14 +64,16 @@ class LatexParser
             if ($this->isOpeningDelimiter($token, $rawText)) {
                 if ($token->type === TokenType::OPT_OPEN) {
                     $contentIndex = $this->getLastContentIndex($stack);
+                    $contentNode = $contentIndex !== -1 ? $stack[$contentIndex] : null;
 
-                    if ($contentIndex === -1 || !($stack[$contentIndex] instanceof CommandNode)) {
-                        $this->pushTextOrWhitespace($stack, '[', $token->lineNumber, false);
+                    if (!($contentNode instanceof CommandNode) ||
+                        (strlen($contentNode->getName()) === 2 && $lexer->getCatcode(ord($contentNode->getName()[1])) !== 12)) {
+                        $this->insertTextOrWhitespace($stack, $rawText, $token->lineNumber, false);
                         continue;
                     }
                 }
 
-                $toggleStack[] = [$rawText, count($stack)];
+                $delimiterStack[] = [$rawText, count($stack)];
                 $stack[] = $token;
                 continue;
             }
@@ -85,12 +87,12 @@ class LatexParser
             }
 
             if ($token->type === TokenType::TEXT) {
-                $this->pushTextOrWhitespace($stack, $rawText, $token->lineNumber, false);
+                $this->insertTextOrWhitespace($stack, $rawText, $token->lineNumber, false);
                 continue;
             }
 
             if ($token->type === TokenType::WHITESPACE) {
-                $this->pushTextOrWhitespace($stack, $rawText, $token->lineNumber, true);
+                $this->insertTextOrWhitespace($stack, $rawText, $token->lineNumber, true);
                 continue;
             }
 
@@ -98,13 +100,13 @@ class LatexParser
             $stack[] = $this->createNodeFromToken($token, $rawText);
         }
 
-        if (!empty($toggleStack)) {
-            [$unclosed, $index] = end($toggleStack);
+        if (!empty($delimiterStack)) {
+            [$unclosed, $index] = end($delimiterStack);
             throw new ParseException("Unclosed delimiter '$unclosed'", $stack[$index]->lineNumber);
         }
 
         foreach ($stack as $node) {
-            if ($node instanceof CommandNode && $node->name === '\begin') {
+            if ($node instanceof CommandNode && $node->getName() === '\begin') {
                 $envName = $this->getEnvironmentName($node);
 
                 throw new ParseException("Unclosed " . ($envName ? "environment '$envName'" : "\begin"), $node->lineNumber);
@@ -113,7 +115,7 @@ class LatexParser
 
         $root = new RootNode();
         $root->addChildren($stack);
-        return $root;
+        return new ParseTree($root);
     }
 
     /**
@@ -200,23 +202,6 @@ class LatexParser
         }
     }
 
-    private function isClosingDelimiter(Token $token, string $raw, array &$toggleStack): bool
-    {
-        if ($token->type === TokenType::GROUP_CLOSE || $token->type === TokenType::OPT_CLOSE) {
-            return true;
-        }
-
-        if ($token->type === TokenType::COMMAND) {
-            return $raw == '\)' || $raw == '\]';
-        }
-
-        if ($token->type === TokenType::MATH_TOGGLE) {
-            return !empty($toggleStack) && end($toggleStack)[0] === $raw;
-        }
-
-        return false;
-    }
-
     private function isOpeningDelimiter(Token $token, string $raw): bool
     {
         if ($token->type === TokenType::COMMAND) {
@@ -235,14 +220,62 @@ class LatexParser
     /**
      * @throws ParseException
      */
-    private function reduceNode(array &$stack, Token $closer, string $raw, array &$toggleStack, $lexer): void
+    private function isClosingDelimiter(array &$stack, Token $token, string $raw, array &$delimiterStack): bool
+    {
+        if ($token->type === TokenType::GROUP_CLOSE || $token->type === TokenType::OPT_CLOSE) {
+            return true;
+        }
+
+        if ($token->type === TokenType::COMMAND) {
+            return $raw == '\)' || $raw == '\]';
+        }
+
+        if ($token->type === TokenType::MATH_TOGGLE) {
+            for ($i = count($delimiterStack) - 1; $i >= 0; $i--) {
+                $delimiter = $delimiterStack[$i][0];
+
+                if ($delimiter === $raw) {
+                    return true;
+                } elseif ($delimiter !== '[') {
+                    break;
+                }
+            }
+
+            return false;
+        }
+
+        return false;
+    }
+
+    /**
+     * This is the main method that creates tree node from the stack when certain tokens are encountered.
+     *
+     * @throws ParseException
+     */
+    private function reduceNode(array &$stack, Token $closer, string $raw, array &$delimiterStack, $lexer): void
     {
         $openerRaw = null;
 
-        if (empty($toggleStack)) {
+        if (empty($delimiterStack)) {
             $isMatch = false;
         } else {
-            $openerRaw = end($toggleStack)[0];
+            $openerRaw = end($delimiterStack)[0];
+
+            if ($raw !== ']') {
+                $leftBracketStackIndices = [];
+
+                while ($openerRaw === '[') {
+                    $leftBracketStackIndices[] = end($delimiterStack)[1];
+                    array_pop($delimiterStack);
+                    $openerRaw = empty($delimiterStack) ? null : end($delimiterStack)[0];
+                }
+
+                for ($j = 0; $j < count($leftBracketStackIndices); $j++) {
+                    $stackIndex = $leftBracketStackIndices[$j];
+                    $this->insertTextOrWhitespace($stack, '[', $stack[$stackIndex]->lineNumber, false, $stackIndex);
+                }
+            }
+
             $isMatch = match($raw) {
                 '}'       => $openerRaw === '{',
                 ']'       => $openerRaw === '[',
@@ -255,7 +288,7 @@ class LatexParser
 
         if ($isMatch) {
             // --- 1. Perform Reduction ---
-            $stackIndex = array_pop($toggleStack)[1];
+            $stackIndex = array_pop($delimiterStack)[1];
             $children = array_splice($stack, $stackIndex + 1);
             $opener = array_pop($stack);
 
@@ -265,14 +298,17 @@ class LatexParser
                 $mathNode = new MathNode($opener->lineNumber, $openingNode, $closingNode);
                 $mathNode->addChildren($children);
                 $stack[] = $mathNode;
-            } else {
+            } else {  // $raw is ']' or '}'
                 $isOptional = ($opener->type === TokenType::OPT_OPEN);
-                $isArgument = $isOptional;
                 $contentIndex = $this->getLastContentIndex($stack);
-
-                if (!$isArgument) {
-                    $isArgument = $contentIndex !== -1 && $stack[$contentIndex] instanceof CommandNode;
-                }
+                $contentNode = $contentIndex !== -1 ? $stack[$contentIndex] : null;
+                $isArgument = $isOptional || (
+                    $contentNode instanceof CommandNode && (
+                        strlen($contentNode->getName()) > 2 || (
+                            strlen($contentNode->getName()) > 1 &&
+                            $lexer->getCatcode(ord($contentNode->getName()[1])) === 12
+                        )
+                    ));
 
                 if ($isArgument) {
                     $command = $stack[$contentIndex];
@@ -285,19 +321,19 @@ class LatexParser
                     if (!$isOptional) {
                         $envName = $this->getEnvironmentName($command);
 
-                        if ($command->name == '\begin' &&
+                        if ($command->getName() == '\begin' &&
                             in_array($envName, $this->rawEnvironments, true)) {
                             array_pop($stack);
                             $this->handleRawEnvironment($stack, $command, $envName, $lexer);
-                        } else if ($command->name == '\end') {
+                        } else if ($command->getName() == '\end') {
                             array_pop($stack);
-                            $this->reduceEnvironment($stack, $command, $toggleStack);
-                        } else if ($command->name === '\usepackage') {
+                            $this->reduceEnvironment($stack, $command, $delimiterStack);
+                        } else if ($command->getName() === '\usepackage') {
                             $this->detectInputEnc($argNode, $lexer);
                         }
                     }
                 } else {
-                    // Brackets won't reach here anymore because they aren't pushed to toggleStack
+                    // Brackets won't reach here anymore because they aren't pushed to delimiterStack
                     // unless there is a CommandNode. Only {} groups fall through here.
                     $groupNode = new GroupNode($opener->lineNumber);
                     $groupNode->addChildren($children);
@@ -306,7 +342,7 @@ class LatexParser
             }
         } else {
             if ($raw === ']') {
-                $this->pushTextOrWhitespace($stack, ']', $closer->lineNumber, false);
+                $this->insertTextOrWhitespace($stack, ']', $closer->lineNumber, false);
             } else {
                 throw new ParseException("Unmatched closing delimiter '$raw'", $closer->lineNumber);
             }
@@ -316,7 +352,7 @@ class LatexParser
     /**
      * @throws ParseException
      */
-    private function reduceEnvironment(array &$stack, CommandNode $endNode, array &$toggleStack): void
+    private function reduceEnvironment(array &$stack, CommandNode $endNode, array &$delimiterStack): void
     {
         $envName = $this->getEnvironmentName($endNode);
 
@@ -324,13 +360,25 @@ class LatexParser
             throw new ParseException("Missing environment name in \\end", $endNode->lineNumber);
         }
 
-        $fromIndex = count($stack) - 1;
-        $toIndex = empty($toggleStack) ? -1 : end($toggleStack)[1];
+        $delimiterIndex = empty($delimiterStack) ? -1 : end($delimiterStack)[1];
+        $leftBracketStackIndices = [];
         $foundIndex = -1;
-        for ($i = $fromIndex; $i > $toIndex; $i--) {
+        for ($i = count($stack) - 1; $i >= 0; $i--) {
+            if ($i === $delimiterIndex) {
+                $delimiterRaw = end($delimiterStack)[0];
+                if ($delimiterRaw === '[') {
+                    $leftBracketStackIndices[] = $delimiterIndex;
+                    array_pop($delimiterStack);
+                    $delimiterIndex = empty($delimiterStack) ? -1 : end($delimiterStack)[1];
+                    continue;
+                } else {
+                    break;
+                }
+            }
+
             $node = $stack[$i];
             if ($node instanceof CommandNode
-                && $node->name === '\begin'
+                && $node->getName() === '\begin'
                 && $this->getEnvironmentName($node) === $envName) {
                 $foundIndex = $i;
                 break;
@@ -338,7 +386,11 @@ class LatexParser
         }
 
         if ($foundIndex === -1) {
-            throw new ParseException("No matching opener found", $endNode->lineNumber);
+            throw new ParseException("No matching opener found for $envName environment.", $endNode->lineNumber);
+        }
+
+        foreach ($leftBracketStackIndices as $stackIndex) {
+            $this->insertTextOrWhitespace($stack, '[', $stack[$stackIndex]->lineNumber, false, $stackIndex);
         }
 
         $body = array_splice($stack, $foundIndex + 1);
@@ -454,26 +506,72 @@ class LatexParser
         return -1;
     }
 
-    private function pushTextOrWhitespace(array &$stack, string $content, $lineNumber, bool $isWhitespace): void
+    /**
+     * @throws ParseException
+     */
+    private function insertTextOrWhitespace(array &$stack, string $content, $lineNumber, bool $isWhitespace, ?int $stackIndex = null): void
     {
-        if ($content !== '') {
-            $top = end($stack);
+        if ($content === '') return;
 
-            if ($isWhitespace) {
-                if ($top instanceof TextNode) {
-                    $top->content .= $content;
+        if ($stackIndex === null) {
+            $stackIndex = count($stack);
+        } else if ($stackIndex < 0 || $stackIndex > count($stack)) {
+            throw new ParseException("Internal error: invalid stack state.", $lineNumber);
+        }
+
+        $left = $stackIndex > 0 ? $stack[$stackIndex - 1] : null;
+        $right = $stackIndex + 1 < count($stack) ? $stack[$stackIndex + 1] : null;
+
+        if ($isWhitespace) {
+            if ($left instanceof WhitespaceNode) {
+                if ($right instanceof TextNode) {
+                    array_splice($stack, $stackIndex - 1, 2);
+                    $right->content = $left->content . $content . $right->content;
                 } else {
-                    $stack[] = new WhitespaceNode($lineNumber, $content);
+                    array_splice($stack, $stackIndex, 1);
+                    $left->content .= $content;
                 }
+            } elseif ($left instanceof TextNode) {
+                if ($right instanceof TextNode) {
+                    array_splice($stack, $stackIndex, 2);
+                    $left->content .= $content . $right->content;
+                } else {
+                    array_splice($stack, $stackIndex, 1);
+                    $left->content .= $content;
+                }
+            } elseif ($right instanceof TextNode) {
+                array_splice($stack, $stackIndex, 1);
+                $right->content = $content . $right->content;
             } else {
-                if ($top instanceof WhitespaceNode) {
-                    array_pop($stack);
-                    $stack[] = new TextNode($top->lineNumber, $top->content . $content);
-                } else if ($top instanceof TextNode) {
-                    $top->content .= $content;
+                $stack[$stackIndex] = new WhitespaceNode($lineNumber, $content);
+            }
+        } else {
+            if ($left instanceof WhitespaceNode) {
+                if ($right instanceof WhitespaceNode) {
+                    array_splice($stack, $stackIndex, 2);
+                    $stackIndex--;
+                    $stack[$stackIndex] = new TextNode($lineNumber, $left->content . $content . $right->content);
+                } elseif ($right instanceof TextNode) {
+                    array_splice($stack, $stackIndex - 1, 2);
+                    $right->content = $left->content . $content . $right->content;
                 } else {
-                    $stack[] = new TextNode($lineNumber, $content);
+                    array_splice($stack, $stackIndex, 1);
+                    $stackIndex--;
+                    $stack[$stackIndex] = new TextNode($lineNumber, $left->content . $content);
                 }
+            } elseif ($left instanceof TextNode) {
+                if ($right instanceof TextNode) {
+                    array_splice($stack, $stackIndex, 2);
+                    $left->content .= $content . $right->content;
+                } else {
+                    array_splice($stack, $stackIndex, 1);
+                    $left->content .= $content;
+                }
+            } elseif ($right instanceof TextNode) {
+                array_splice($stack, $stackIndex, 1);
+                $right->content = $content . $right->content;
+            } else {
+                $stack[$stackIndex] = new TextNode($lineNumber, $content);
             }
         }
     }
