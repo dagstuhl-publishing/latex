@@ -58,6 +58,9 @@ class Lexer
         return $this->encoding;
     }
 
+    /**
+     * @throws ParseException
+     */
     public function setEncoding(string $encoding): void
     {
         $normalized = strtolower(str_replace('-', '', $encoding));
@@ -90,7 +93,7 @@ class Lexer
                 foreach (range(128, 255) as $b) $this->catCodes[$b] = 13;
                 break;
             default:
-                throw new ParseException("Unsupported encoding: " . $encoding, $this->lineNumber);
+                throw new ParseException("Unsupported encoding: $encoding" . ($encoding === $normalized ? '' : " ($normalized)"), $this->lineNumber);
         }
 
         $this->encoding = $normalized;
