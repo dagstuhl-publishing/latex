@@ -33,7 +33,6 @@ require_once __DIR__ . '/TreeNodes/CommentNode.php';
 require_once __DIR__ . '/TreeNodes/VerbNode.php';
 
 use Dagstuhl\Latex\Parser\TreeNodes\CommandNode;
-use Dagstuhl\Latex\Parser\TreeNodes\ArgumentNode;
 
 function findCommandNode($root, string $str): ?ParseTreeNode
 {
@@ -161,7 +160,8 @@ foreach (generateInput(array_key_exists('f', $options) ? $options['f'] : [], $no
     }
 
     try {
-        $root = $parser->parse($source);
+        $tree = $parser->parse($source);
+        $root = $tree->root;
             if ($verbosity == 2) {
             echo "\n";
             if ($mine) {

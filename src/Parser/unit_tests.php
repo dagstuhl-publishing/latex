@@ -6,6 +6,7 @@ namespace Dagstuhl\Latex\Parser;
 require_once __DIR__ . '/Char.php';
 require_once __DIR__ . '/Lexer.php';
 require_once __DIR__ . '/ParseTreeNode.php';
+require_once __DIR__ . '/ParseTree.php';
 require_once __DIR__ . '/ParseException.php';
 require_once __DIR__ . '/CatcodeState.php';
 require_once __DIR__ . '/LatexParser.php';
@@ -95,84 +96,88 @@ $parser = new LatexParser();
 
 $t->test("Catcode: Standard numeric (64 11)", function () use ($parser) {
     $source = "\\catcode 64 11";
-    $root = $parser->parse($source);
-    if ($root->toLatex() !== $source) throw new ParseException("Round-trip failed", 1, $root);
+    $tree = $parser->parse($source);
+    if ($tree->toLatex() !== $source) throw new ParseException("Round-trip failed", 1, $tree->root);
 });
 
 $t->test("Catcode: Optional equals (64 = 11)", function () use ($parser) {
     $source = "\\catcode 64 = 11";
-    $root = $parser->parse($source);
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Round-trip failed with equals sign", 1, $root);
+    $tree = $parser->parse($source);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Round-trip failed with equals sign", 1, $tree->root);
     }
 });
 
 $t->test("Catcode: Backtick notation (`\\@ = 11)", function () use ($parser) {
     $source = "\\catcode`\\@ = 11";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     $checkSource = "@asLetter";
     $checkRoot = $parser->parse($checkSource);
-    $nodes = $checkRoot->getChildren();
+    $nodes = $checkRoot->root->getChildren();
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Round-trip failed with backtick notation", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Round-trip failed with backtick notation", 1, $tree->root);
     }
 });
 
 $t->test("Catcode: Mixed whitespace and comments", function () use ($parser) {
     $source = "\\catcode % comment\n 64\n =\n 11";
-    $root = $parser->parse($source);
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Round-trip failed with comments/whitespace", 1, $root);
+    $tree = $parser->parse($source);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Round-trip failed with comments/whitespace", 1, $tree->root);
     }
 });
 
 $t->test("Structural: Optional arguments are children and brackets are consumed", function () use ($parser) {
     $source = "\\usepackage[utf8]{inputenc}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $children = $root->getChildren();
+    $children = $tree->root->getChildren();
     $cmd = $children[0];
-    if (!($cmd instanceof CommandNode)) throw new ParseException("Expected CommandNode, but got " . get_class($cmd), 1, $root);
+    if (!($cmd instanceof CommandNode)) throw new ParseException("Expected CommandNode, but got " . get_class($cmd), 1, $tree->root);
 
     $cmdChildren = $cmd->getChildren();
-    if (count($cmdChildren) !== 2) {
-        throw new ParseException("Expected 2 arguments, found " . count($cmdChildren), 1, $root);
+    if (count($cmdChildren) !== 3) {
+        throw new ParseException("Expected 3 arguments, found " . count($cmdChildren), 1, $tree->root);
     }
 
-    $optArg = $cmdChildren[0];
+    $optArg = $cmdChildren[1];
     if (!($optArg instanceof ArgumentNode) || !$optArg->isOptional) {
-        throw new ParseException("First child should be an optional ArgumentNode", 1, $root);
+        throw new ParseException("First child should be an optional ArgumentNode", 1, $tree->root);
     }
 
     foreach ($children as $node) {
         if ($node instanceof TextNode && str_contains($node->toLatex(), "]")) {
-            throw new ParseException("Stray ']' found in tree as TextNode!", 1, $root);
+            throw new ParseException("Stray ']' found in tree as TextNode!", 1, $tree->root);
         }
     }
 });
 
 $t->test("Structural: Nested groups in optional arguments", function () use ($parser) {
     $source = "\\mycmd[{value}]{content}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $children = $root->getChildren();
+    $children = $tree->root->getChildren();
     $cmd = $children[0];
 
-    $optArg = $cmd->getChildren()[0];
+    $optArg = $cmd->getChildren()[1];
 
-    $innerGroup = $optArg->getChildren()[0];
+    if ($optArg->getChildCount() !== 3) {
+        throw new ParseException("Optional argument should have exactly 3 children, but has " . $optArg->getChildCount(), 1, $tree->root);
+    }
+
+    $innerGroup = $optArg->getChildren()[1];
 
     if (!$innerGroup instanceof GroupNode) {
-        throw new ParseException("Expected GroupNode for nested braces, but got " . get_class($innerGroup), 1, $root);
+        throw new ParseException("Expected GroupNode for nested braces, but got " . get_class($innerGroup), 1, $tree->root);
     }
 
     if ($innerGroup->toLatex() !== "{value}") {
-        throw new ParseException("Nested group content mismatch: " . $innerGroup->toLatex(), 1, $root);
+        throw new ParseException("Nested group content mismatch: " . $innerGroup->toLatex(), 1, $tree->root);
     }
 });
 
@@ -187,10 +192,10 @@ $t->test("Encoding: Byte vs Character handling for €", function () use ($parse
     }
 
     $sourceUtf8 = "\\usepackage[utf8]{inputenc}€";
-    $root = $parser->parse($sourceUtf8);
+    $tree = $parser->parse($sourceUtf8);
 
     $euroNode = null;
-    foreach ($root->getChildren() as $node) {
+    foreach ($tree->root->getChildren() as $node) {
         if ($node instanceof CommandNode || $node instanceof TextNode) {
             if (str_contains($node->toLatex(), "€")) {
                 $euroNode = $node;
@@ -200,16 +205,16 @@ $t->test("Encoding: Byte vs Character handling for €", function () use ($parse
     }
 
     if (!$euroNode) {
-        throw new ParseException("Euro symbol not found in AST", 1, $root);
+        throw new ParseException("Euro symbol not found in AST", 1, $tree->root);
     }
 
     $output = $euroNode->toLatex();
     if (strlen($output) !== 3) {
-        throw new ParseException("Euro symbol in output must preserve all 3 bytes", 1, $root);
+        throw new ParseException("Euro symbol in output must preserve all 3 bytes", 1, $tree->root);
     }
 
     if (mb_strlen($output, 'UTF-8') !== 1) {
-        throw new ParseException("Euro symbol should be interpreted as 1 character in UTF-8 mode", 1, $root);
+        throw new ParseException("Euro symbol should be interpreted as 1 character in UTF-8 mode", 1, $tree->root);
     }
 });
 
@@ -260,17 +265,17 @@ $t->test("Lexer: Deep Byte-Accuracy & Line Tracking", function() {
 
 $t->test("Parser: Nested Groups", function() use ($parser) {
     $source = "Outer {Middle {Inner}}";
-    $root = $parser->parse($source);
-    if ($root->toLatex() !== $source) throw new ParseException("Nesting round-trip failed", 1, $root);
+    $tree = $parser->parse($source);
+    if ($tree->toLatex() !== $source) throw new ParseException("Nesting round-trip failed", 1, $tree->root);
 });
 
 $t->test("Parser: Optional & Mandatory", function() use ($parser) {
     $source = "\\cite[p. 10]{Knuth}";
-    $root = $parser->parse($source);
-    $output = $root->toLatex();
+    $tree = $parser->parse($source);
+    $output = $tree->toLatex();
     if ($output !== $source) {
         print_doc_diff($source, $output);
-        throw new ParseException("Mixed arguments failed", 1, $root);
+        throw new ParseException("Mixed arguments failed", 1, $tree->root);
     }
 });
 
@@ -285,8 +290,8 @@ $t->test("Parser Error: Mismatched Delimiters", function() use ($parser) {
 
 $t->test("Encoding: Multi-package list with spaces", function () use ($parser) {
     $source = "\\usepackage[utf8]{ amsmath, inputenc, graphicx }";
-    $root = $parser->parse($source);
-    if ($root->toLatex() !== $source) throw new ParseException("Round-trip failed", 1, $root);
+    $tree = $parser->parse($source);
+    if ($tree->toLatex() !== $source) throw new ParseException("Round-trip failed", 1, $tree->root);
 });
 
 $t->test("Encoding: Unsupported encoding throws ParseException", function () use ($parser) {
@@ -304,63 +309,63 @@ $t->test("Encoding: Unsupported encoding throws ParseException", function () use
 
 $t->test("Encoding: Comment inside package name", function () use ($parser) {
     $source = "\\usepackage{input%comment\nenc}";
-    $root = $parser->parse($source);
-    if ($root->toLatex() !== $source) throw new ParseException("Round-trip failed", 1, $root);
+    $tree = $parser->parse($source);
+    if ($tree->toLatex() !== $source) throw new ParseException("Round-trip failed", 1, $tree->root);
 });
 
 $t->test("Verbatim: \\verb with custom delimiter", function () use ($parser) {
     $source = "\\verb+raw % text+";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $verbNode = $root->getChildren()[0];
+    $verbNode = $tree->root->getChildren()[0];
     if (!($verbNode instanceof VerbNode)) {
-        throw new ParseException("Expected VerbNode, got " . get_class($verbNode), 1, $root);
+        throw new ParseException("Expected VerbNode, got " . get_class($verbNode), 1, $tree->root);
     }
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Round-trip failed for \\verb", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Round-trip failed for \\verb", 1, $tree->root);
     }
 });
 
 $t->test("Verbatim: Line counting after multi-line \\verb", function () use ($parser) {
     $source = "Line 1\n\\verb|first line\nsecond line| \nLast Line\section";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source) {
-        throw new ParseException("Round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        throw new ParseException("Round-trip failed", 1, $tree->root);
     }
 
-    $lastNode = $root->getChild(-1);
+    $lastNode = $tree->root->getChild(-1);
     if ($lastNode->lineNumber !== 4) {
-        throw new ParseException("Line counter mismatch. Expected 4, got " . $lastNode->lineNumber, 1, $root);
+        throw new ParseException("Line counter mismatch. Expected 4, got " . $lastNode->lineNumber, 1, $tree->root);
     }
 });
 
 $t->test("Structural: Command is parent of Argument", function () use ($parser) {
     $source = "\\usepackage{inputenc}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $cmd = $root->getChildren()[0];
-    $arg = $cmd->getChildren()[0];
+    $cmd = $tree->root->getChildren()[0];
+    $arg = $cmd->getChildren()[1];
 
     if ($arg->parent !== $cmd) {
-        throw new ParseException("ArgumentNode's parent should be the CommandNode.", 1, $root);
+        throw new ParseException("ArgumentNode's parent should be the CommandNode.", 1, $tree->root);
     }
 });
 
 $t->test("Structural: Parent reference check", function () use ($parser) {
     $source = "\\section{Intro}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $sectionNode = $root->getChildren()[0];
-    $argNode = $sectionNode->getChildren()[0];
+    $sectionNode = $tree->root->getChildren()[0];
+    $argNode = $sectionNode->getChildren()[1];
 
-    if ($sectionNode->parent !== $root) {
-        throw new ParseException("CommandNode parent reference is missing", 1, $root);
+    if ($sectionNode->parent !== $tree->root) {
+        throw new ParseException("CommandNode parent reference is missing", 1, $tree->root);
     }
     if ($argNode->parent !== $sectionNode) {
-        throw new ParseException("ArgumentNode parent reference is missing", 1, $root);
+        throw new ParseException("ArgumentNode parent reference is missing", 1, $tree->root);
     }
 });
 
@@ -368,10 +373,10 @@ $t->test("Parser: Escaped Structural Characters", function() use ($parser) {
     $source1 = "100\% certain that \\\\ works with \{ braces \}";
     $source2 = " % but also with comments.";
     $fullSource = $source1 . $source2;
-    $root = $parser->parse($fullSource);
+    $tree = $parser->parse($fullSource);
 
-    if ($root->toLatex() !== $fullSource) {
-        throw new ParseException("Escape round-trip failed! Got: " . $root->toLatex(), 1, $root);
+    if ($tree->toLatex() !== $fullSource) {
+        throw new ParseException("Escape round-trip failed! Got: " . $tree->toLatex(), 1, $tree->root);
     }
 
     $search = function($node) use (&$search) {
@@ -382,91 +387,94 @@ $t->test("Parser: Escaped Structural Characters", function() use ($parser) {
         return false;
     };
 
-    $lastNode = $root->getChild(-1);
+    $lastNode = $tree->root->getChild(-1);
     if (!($lastNode instanceof CommentNode)) {
-        throw new ParseException("Comment check failed: Last node is not a CommentNode.", 1, $root);
+        throw new ParseException("Comment check failed: Last node is not a CommentNode.", 1, $tree->root);
     }
 
     $commentCount = 0;
-    foreach ($root->getChildren() as $node) {
+    foreach ($tree->root->getChildren() as $node) {
         if ($node instanceof CommentNode) $commentCount++;
     }
 
     if ($commentCount !== 1) {
-        throw new ParseException("Comment count failed: Expected 1, found " . $commentCount, 1, $root);
+        throw new ParseException("Comment count failed: Expected 1, found " . $commentCount, 1, $tree->root);
     }
 
-    if ($search($root)) {
-        throw new ParseException("Structural failure: Escaped braces created an ArgumentNode!", 1, $root);
+    if ($search($tree->root)) {
+        throw new ParseException("Structural failure: Escaped braces created an ArgumentNode!", 1, $tree->root);
     }
 });
 
 $t->test("Structural: Implicit close of command (\section)", function () use ($parser) {
     $source = "\\section{Introduction} This is text.";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $children = $root->getChildren();
+    $children = $tree->root->getChildren();
     if (count($children) !== 2) {
-        throw new ParseException("Root should have 2 children (Command and Text), found " . count($children), 1, $root);
+        throw new ParseException("Root should have 2 children (Command and Text), found " . count($children), 1, $tree->root);
     }
 
     $section = $children[0];
     if (!$section instanceof CommandNode || $section->getName() !== '\\section') {
-        throw new ParseException("First child should be the \\section command", 1, $root);
+        throw new ParseException("First child should be the \\section command", 1, $tree->root);
     }
 
-    if (count($section->getChildren()) !== 1) {
-        throw new ParseException("\\section should have exactly 1 child (the argument)", 1, $root);
+    if (count($section->getChildren()) !== 2) {
+        throw new ParseException("\\section should have exactly 2 children (the name & the argument)", 1, $tree->root);
     }
 
     $text = $children[1];
     if (!$text instanceof TextNode || !str_contains($text->content, "This is text")) {
-        throw new ParseException("Second child should be the trailing text", 1, $root);
+        throw new ParseException("Second child should be the trailing text", 1, $tree->root);
     }
 });
 
 $t->test("Environment: Standard round-trip (center)", function () use ($parser) {
     $source = "\\begin{center}\nContent with \\textbf{formatting}\n\\end{center}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $env = $root->getChildren()[0];
+    $env = $tree->root->getChildren()[0];
     if (!($env instanceof EnvironmentNode)) {
-        throw new ParseException("Expected EnvironmentNode, got " . get_class($env), 1, $root);
+        throw new ParseException("Expected EnvironmentNode, got " . get_class($env), 1, $tree->root);
     }
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Standard environment round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Standard environment round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Environment: Verbatim raw consumption", function () use ($parser) {
     $source = "\\begin{verbatim}\n% not a comment\n\\textbf{not bold}\n\\end{verbatim}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $env = $root->getChildren()[0];
-    foreach ($env->getChildren() as $child) {
+    $env = $tree->root->getChildren()[0];
+    $children = $env->getChildren();
+
+    for ($i = 1, $n = count($children) - 1; $i < $n; $i++) {
+        $child = $children[$i];
         if (!($child instanceof TextNode)) {
-            throw new ParseException("Verbatim body contains non-text node: " . get_class($child), 1, $root);
+            throw new ParseException("Verbatim body contains non-text node: " . get_class($child), 1, $tree->root);
         }
     }
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Verbatim environment round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Verbatim environment round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Environment: Nested stack unwinding", function () use ($parser) {
     $source = "\\begin{outer}\n  Text\n  \\begin{inner}\n    Inside\n  \\end{inner}\n\\end{outer}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Nested environment round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Nested environment round-trip failed", 1, $tree->root);
     }
 
-    $outer = $root->getChildren()[0];
+    $outer = $tree->root->getChildren()[0];
     $hasInner = false;
     foreach ($outer->getChildren() as $child) {
         if ($child instanceof EnvironmentNode && $child->envName === 'inner') {
@@ -475,54 +483,54 @@ $t->test("Environment: Nested stack unwinding", function () use ($parser) {
         }
     }
 
-    if (!$hasInner) throw new ParseException("Inner environment not found inside outer environment children", 1, $root);
+    if (!$hasInner) throw new ParseException("Inner environment not found inside outer environment children", 1, $tree->root);
 });
 
 $t->test("Environment: Line counting after raw body", function () use ($parser) {
     $source = "\\begin{verbatim}\nLine 2\nLine 3\n\\end{verbatim}\n\section";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $lastNode = $root->getChild(-1);
+    $lastNode = $tree->root->getChild(-1);
 
     if ($lastNode->lineNumber !== 5) {
-        throw new ParseException("Line counter mismatch after verbatim. Expected 5, got " . $lastNode->lineNumber, 1, $root);
+        throw new ParseException("Line counter mismatch after verbatim. Expected 5, got " . $lastNode->lineNumber, 1, $tree->root);
     }
 });
 
 $t->test("Environment: Safety check for optional arguments", function () use ($parser) {
     $source = "\\begin[options]{verbatim}\nRaw\n\\end{verbatim}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $env = $root->getChildren()[0];
+    $env = $tree->root->getChildren()[0];
     if ($env->envName !== 'verbatim') {
-        throw new ParseException("Failed to identify verbatim environment with optional argument", 1, $root);
+        throw new ParseException("Failed to identify verbatim environment with optional argument", 1, $tree->root);
     }
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Environment with optional argument round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Environment with optional argument round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Math: Inline shift (\$...\$)", function () use ($parser) {
     $source = "Equation: \$a + b = c\$ done.";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     // The Lexer should return MATH_SHIFT for '$'
     // The Parser should ideally wrap these into a MathNode (if implemented)
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Inline math round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Inline math round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Math: Display shift (\$\$...\$\$)", function () use ($parser) {
     $source = "Display: \$\$E=mc^2\$\$";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Display math round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Display math round-trip failed", 1, $tree->root);
     }
 
     // Verify the Lexer didn't leave a stray '$' behind
@@ -540,35 +548,35 @@ $t->test("Math: Display shift (\$\$...\$\$)", function () use ($parser) {
 
 $t->test("Math: Multi-line display math line tracking", function () use ($parser) {
     $source = "Line 1\n\$\$\na+b\n\$\$\n\section in Line 5";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source) {
-        throw new ParseException("Multi-line math round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        throw new ParseException("Multi-line math round-trip failed", 1, $tree->root);
     }
 
-    $lastNode = $root->getChild(-1); // "Line 5"
+    $lastNode = $tree->root->getChild(-1); // "Line 5"
     if ($lastNode->lineNumber !== 5) {
-        throw new ParseException("Line tracking failed after multi-line math. Expected 5, got " . $lastNode->lineNumber, 1, $root);
+        throw new ParseException("Line tracking failed after multi-line math. Expected 5, got " . $lastNode->lineNumber, 1, $tree->root);
     }
 });
 
 $t->test("Math: Escaped dollar sign should NOT be math", function () use ($parser) {
     $source = "Costs \\\$10.00 total.";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     // Searching for any MATH_SHIFT tokens (which shouldn't exist here)
-    $output = $root->toLatex();
+    $output = $tree->toLatex();
     if (str_contains($output, '$') && !str_contains($output, '\$')) {
-        throw new ParseException("Escaped dollar sign was treated as math shift!", 1, $root);
+        throw new ParseException("Escaped dollar sign was treated as math shift!", 1, $tree->root);
     }
 });
 
 $t->test("Lexer: Active character (tilde ~)", function () use ($parser) {
     $source = "Equation~\ref{eq1}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     // Verify the tilde is captured as its own node/token
-    $children = $root->getChildren();
+    $children = $tree->root->getChildren();
 
     // We expect: TextNode('Equation'), CommandNode('~'), CommandNode('\ref'), GroupNode('{eq1}')
     $tildeNode = null;
@@ -580,21 +588,21 @@ $t->test("Lexer: Active character (tilde ~)", function () use ($parser) {
     }
 
     if (!$tildeNode) {
-        throw new ParseException("Active character '~' should be a CommandNode", 1, $root);
+        throw new ParseException("Active character '~' should be a CommandNode", 1, $tree->root);
     }
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Active character round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Active character round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Catcode: Change char to Active (Catcode 13)", function () use ($parser) {
     $source = "\\catcode 33 = 13 !";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     // Check the last child of the root
-    $lastNode = $root->getChild(-1);
+    $lastNode = $tree->root->getChild(-1);
     if (!($lastNode instanceof CommandNode)) {
         throw new \Exception("Character '!' with Catcode 13 should be a CommandNode");
     }
@@ -602,18 +610,18 @@ $t->test("Catcode: Change char to Active (Catcode 13)", function () use ($parser
 
 $t->test("Math: LaTeX envelopes \( and \[", function () use ($parser) {
     $source = "Inline \(a+b\) and display \[c+d\]";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source) {
-        throw new ParseException("Math envelope round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        throw new ParseException("Math envelope round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Math: Multi-line \[ envelope", function () use ($parser) {
     $source = "Start\n\[\nx^2\n\]\n\section End";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $lastNode = $root->getChild(-1); // "End"
+    $lastNode = $tree->root->getChild(-1); // "End"
     if ($lastNode->lineNumber !== 5) {
         throw new ParseException("Line tracking failed in \[ envelope. Expected 5, got " . $lastNode->lineNumber, 5);
     }
@@ -622,10 +630,10 @@ $t->test("Math: Multi-line \[ envelope", function () use ($parser) {
 // Test for the amsmath distinction
 $t->test("Parser: Math vs Text Environments", function () use ($parser) {
     $source = "\\begin{equation} a=1 \\end{equation} \\begin{split} b=2 \\end{split}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $eq = $root->getChild(0);
-    $split = $root->getChild(1);
+    $eq = $tree->root->getChild(0);
+    $split = $tree->root->getChild(1);
 
     if (!($eq instanceof MathEnvironmentNode)) {
         throw new \Exception("equation should be a MathEnvironmentNode");
@@ -655,16 +663,16 @@ Text mode.
 \end{split}
 LATEX;
 
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     // 1. equation (Standard LaTeX)
-    $equation = $root->getChild(1);
+    $equation = $tree->root->getChild(1);
     if (!($equation instanceof MathEnvironmentNode)) {
         throw new \Exception("equation should be a MathEnvironmentNode");
     }
 
     // 2. alignat* (amsmath, has mandatory argument {2})
-    $alignat = $root->getChild(3);
+    $alignat = $tree->root->getChild(3);
     if (!($alignat instanceof MathEnvironmentNode)) {
         throw new \Exception("alignat* should be a MathEnvironmentNode");
     }
@@ -673,13 +681,13 @@ LATEX;
     }
 
     // 3. dcases (mathtools)
-    $dcases = $root->getChild(5);
+    $dcases = $tree->root->getChild(5);
     if (!($dcases instanceof MathEnvironmentNode)) {
         throw new \Exception("dcases should be a MathEnvironmentNode");
     }
 
     // 4. split (Internal environment - should NOT be MathEnvironmentNode)
-    $split = $root->getChild(7);
+    $split = $tree->root->getChild(7);
     if ($split instanceof MathEnvironmentNode) {
         throw new \Exception("split should be a standard EnvironmentNode, not MathEnvironmentNode");
     }
@@ -690,36 +698,36 @@ LATEX;
 
 $t->test("Structural: Nested command in optional argument", function () use ($parser) {
     $source = "\\textbf[\\textbf{}]";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source)
+    if ($tree->toLatex() !== $source)
     {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Round-trip failed for nested command in optional argument", 1, $root);
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Round-trip failed for nested command in optional argument", 1, $tree->root);
     }
 
-    $children = $root->getChildren();
+    $children = $tree->root->getChildren();
     $outerCmd = $children[0];
 
     if (!($outerCmd instanceof CommandNode) || $outerCmd->getName() !== '\\textbf')
     {
-        throw new ParseException("Expected outer \\textbf command", 1, $root);
+        throw new ParseException("Expected outer \\textbf command", 1, $tree->root);
     }
 
     $outerChildren = $outerCmd->getChildren();
     // We expect one child: the optional ArgumentNode.
     // (Note: If your parser logic implies a mandatory one follows, adjust count accordingly)
-    $optArg = $outerChildren[0];
+    $optArg = $outerChildren[1];
 
     if (!($optArg instanceof ArgumentNode) || !$optArg->isOptional)
     {
-        throw new ParseException("First child of outer \\textbf must be an optional ArgumentNode", 1, $root);
+        throw new ParseException("First child of outer \\textbf must be an optional ArgumentNode", 1, $tree->root);
     }
 
-    $innerCmd = $optArg->getChildren()[0];
+    $innerCmd = $optArg->getChildren()[1];
     if (!($innerCmd instanceof CommandNode) || $innerCmd->getName() !== '\\textbf')
     {
-        throw new ParseException("Optional argument should contain an inner \\textbf CommandNode", 1, $root);
+        throw new ParseException("Optional argument should contain an inner \\textbf CommandNode", 1, $tree->root);
     }
 });
 
@@ -728,18 +736,18 @@ $t->test("Structural: Comment with newline preservation", function () use ($pars
     // In LaTeX, '% comment\n' usually behaves like a single space if followed by more text,
     // but for round-tripping, we need the exact character sequence.
     $source = "% comment\n";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $comment = $root->getChild(0);
+    $comment = $tree->root->getChild(0);
     if (!($comment instanceof CommentNode)) {
-        throw new ParseException("Expected CommentNode as the first child of the root.", 1, $root);
+        throw new ParseException("Expected CommentNode as the first child of the root.", 1, $tree->root);
     }
 
     if (!str_ends_with($comment->toLatex(), "\n")) {
-        throw new ParseException("Comment did not consume the newline.", 1, $root);
+        throw new ParseException("Comment did not consume the newline.", 1, $tree->root);
     }
 
-    $serialized = $root->toLatex();
+    $serialized = $tree->toLatex();
     if ($serialized !== $source) {
         throw new \Exception("Round-trip failed for comment newline.");
     }
@@ -748,77 +756,77 @@ $t->test("Structural: Comment with newline preservation", function () use ($pars
 $t->test("Structural: Optional argument without mandatory argument", function () use ($parser) {
     // In LaTeX, \section[Opt]{} is common, but \mycmd[Opt] is also valid.
     $source = "\\mycmd[Inside Opt] Following Text";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $children = $root->getChildren();
+    $children = $tree->root->getChildren();
     $cmd = $children[0];
 
     if (!($cmd instanceof CommandNode)) {
-        throw new ParseException("Expected CommandNode, got " . get_class($cmd), 1, $root);
+        throw new ParseException("Expected CommandNode, got " . get_class($cmd), 1, $tree->root);
     }
 
     $cmdChildren = $cmd->getChildren();
-    if (count($cmdChildren) !== 1) {
-        throw new ParseException("Command should have exactly 1 child (the optional argument), found " . count($cmdChildren), 1, $root);
+    if (count($cmdChildren) !== 2) {
+        throw new ParseException("Command should have exactly 2 children (name & optional argument), found " . count($cmdChildren), 1, $tree->root);
     }
 
-    $optArg = $cmdChildren[0];
+    $optArg = $cmdChildren[1];
     if (!($optArg instanceof ArgumentNode) || !$optArg->isOptional) {
-        throw new ParseException("Child should be an optional ArgumentNode", 1, $root);
+        throw new ParseException("Child should be an optional ArgumentNode", 1, $tree->root);
     }
 
     $argContent = $optArg->toLatex();
     if ($argContent !== "[Inside Opt]") {
-        throw new ParseException("Argument content mismatch: " . $argContent, 1, $root);
+        throw new ParseException("Argument content mismatch: " . $argContent, 1, $tree->root);
     }
 
     $followingText = $children[1];
     if (!($followingText instanceof TextNode) || !str_contains($followingText->content, "Following Text")) {
-        throw new ParseException("Text following the command was lost or misidentified.", 1, $root);
+        throw new ParseException("Text following the command was lost or misidentified.", 1, $tree->root);
     }
 });
 
 $t->test("Structural: Multiple optional arguments", function () use ($parser) {
     // xparse and some packages allow multiple [][][]
     $source = "\\mycmd[Opt1][Opt2]{Mandatory}";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    $cmd = $root->getChild(0);
+    $cmd = $tree->root->getChild(0);
     $cmdChildren = $cmd->getChildren();
 
-    if (count($cmdChildren) !== 3) {
-        throw new ParseException("Expected 3 arguments, found " . count($cmdChildren), 1, $root);
+    if (count($cmdChildren) !== 4) {
+        throw new ParseException("Expected 4 arguments, found " . count($cmdChildren), 1, $tree->root);
     }
 
-    if (!$cmdChildren[0]->isOptional || !$cmdChildren[1]->isOptional || $cmdChildren[2]->isOptional) {
-        throw new ParseException("Argument sequence [Opt][Opt]{Mand} not preserved correctly.", 1, $root);
+    if (!$cmdChildren[1]->isOptional || !$cmdChildren[2]->isOptional || $cmdChildren[3]->isOptional) {
+        throw new ParseException("Argument sequence [Opt][Opt]{Mand} not preserved correctly.", 1, $tree->root);
     }
 });
 
 $t->test("Structural: Stray brackets treated as text", function () use ($parser) {
     $source = "The interval is [0, 1].";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
     // There should be no ArgumentNodes here, just TextNodes.
-    foreach ($root->getChildren() as $node) {
+    foreach ($tree->root->getChildren() as $node) {
         if ($node instanceof ArgumentNode) {
-            throw new ParseException("Stray '[' was incorrectly treated as an ArgumentNode", 1, $root);
+            throw new ParseException("Stray '[' was incorrectly treated as an ArgumentNode", 1, $tree->root);
         }
     }
 
-    if ($root->toLatex() !== $source) {
-        throw new ParseException("Stray bracket round-trip failed", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        throw new ParseException("Stray bracket round-trip failed", 1, $tree->root);
     }
 });
 
 $t->test("Structural: Mismatched brackets in text", function () use ($parser) {
     // This is valid LaTeX text: an opening bracket never closed, or vice versa.
     $source = "Check this [ and this ] separately.";
-    $root = $parser->parse($source);
+    $tree = $parser->parse($source);
 
-    if ($root->toLatex() !== $source) {
-        print_doc_diff($source, $root->toLatex());
-        throw new ParseException("Mismatched stray brackets failed round-trip", 1, $root);
+    if ($tree->toLatex() !== $source) {
+        print_doc_diff($source, $tree->toLatex());
+        throw new ParseException("Mismatched stray brackets failed round-trip", 1, $tree->root);
     }
 });
 
