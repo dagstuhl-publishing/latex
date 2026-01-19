@@ -11,8 +11,10 @@ require_once __DIR__ . '/../../vendor/xemlock/php-latex/library/PhpLatex/Rendere
 require_once __DIR__ . '/../../vendor/xemlock/php-latex/library/PhpLatex/Utils/TreeDebug.php';
 require_once __DIR__ . '/Char.php';
 require_once __DIR__ . '/Lexer.php';
+require_once __DIR__ . '/ParseTree.php';
 require_once __DIR__ . '/ParseTreeNode.php';
 require_once __DIR__ . '/ParseException.php';
+require_once __DIR__ . '/NodeMatch.php';
 require_once __DIR__ . '/CatcodeState.php';
 require_once __DIR__ . '/LatexParser.php';
 require_once __DIR__ . '/TokenType.php';
@@ -36,7 +38,7 @@ use Dagstuhl\Latex\Parser\TreeNodes\ArgumentNode;
 function findCommandNode($root, string $str): ?ParseTreeNode
 {
     if ($root instanceof CommandNode &&
-        $root->name === $str) {
+        $root->getName() === $str) {
         return $root;
     }
 
@@ -108,11 +110,12 @@ function generateInput($filenames, $sourceStrings) {
 }
 
 // Define the expected options
-$shortopts  = "hf:qmx"; // h (help), f: (file requires value), v (verbose flag)
+$shortopts  = "hf:qr:mx"; // h (help), f: (file requires value), v (verbose flag)
 $longopts   = [
     "help",      // No value
     "file:",     // Value required
     "quiet",
+    "regex",
     "mute",
     "xemlock"
 ];
@@ -163,6 +166,21 @@ foreach (generateInput(array_key_exists('f', $options) ? $options['f'] : [], $no
             echo "\n";
             if ($mine) {
                 echo $root->toTreeString();
+
+                if (array_key_exists('r', $options)) {
+                    echo "\n---------\n";
+                    $parseTree = new ParseTree($root, $source);
+                    $regex = $options['r'];
+
+                    $matches = [];
+                    $parseTree->preg_match($regex, $matches);
+
+                    if (empty($matches)) {
+                        echo "Regular expression: no match\n";
+                    } else {
+                        echo $matches[0] . "\n";
+                    }
+                }
             } else {
                 \PhpLatex_Utils_TreeDebug::debug($root);
                 $latex = \PhpLatex_Renderer_Abstract::toLatex($root);
