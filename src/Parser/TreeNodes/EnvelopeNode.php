@@ -26,11 +26,15 @@ abstract class EnvelopeNode extends ParseTreeNode
     }
 
     /**
-     * @throws ParseException
+     * @param ParseTreeNode|null $node
+     * @param int|ParseTreeNode|null $indexOrBeforeNode either a child node of $this before which to insert $node, or
+     * the index at which $node will be inserted.
+     * @return void
+     * @throws \Exception
      */
-    public function addChild(?ParseTreeNode $node, ?int $index = null): void
+    public function addChild(?ParseTreeNode $node, int|ParseTreeNode|null $indexOrBeforeNode = null): void
     {
-        $index = $this->getNormalizedIndex($index);
+        $index = $this->getNormalizedIndex($indexOrBeforeNode);
 
         if ($index < 1 || $index > $this->getChildCount() - 1) {
             throw new \Exception("Index out of bounds: " . $index);
@@ -40,11 +44,15 @@ abstract class EnvelopeNode extends ParseTreeNode
     }
 
     /**
-     * @throws ParseException
+     * @param array $nodes
+     * @param int|ParseTreeNode|null $indexOrBeforeNode either a child node of $this before which to insert the $nodes,
+     * or the index at which the $nodes will be inserted.
+     * @return void
+     * @throws \Exception
      */
-    public function addChildren(array $nodes, ?int $index = null): void
+    public function addChildren(array $nodes, int|ParseTreeNode|null $indexOrBeforeNode = null): void
     {
-        $index = $this->getNormalizedIndex($index);
+        $index = $this->getNormalizedIndex($indexOrBeforeNode);
 
         if ($index < 1 || $index > $this->getChildCount() - 1) {
             throw new \Exception("Index out of bounds: " . $index);
@@ -53,9 +61,9 @@ abstract class EnvelopeNode extends ParseTreeNode
         parent::addChildren($nodes, $index);
     }
 
-    public function removeChild(int $index): ?ParseTreeNode
+    public function removeChild(int|ParseTreeNode $indexOrChild): ?ParseTreeNode
     {
-        $index = $this->getNormalizedIndex($index);
+        $index = $this->getNormalizedIndex($indexOrChild);
 
         if ($index < 1 || $index > $this->getChildCount() - 1) {
             throw new \Exception("Index out of bounds: " . $index);
@@ -64,7 +72,7 @@ abstract class EnvelopeNode extends ParseTreeNode
         return parent::removeChild($index);
     }
 
-    protected function getNormalizedIndex(?int $index): int
+    protected function getNormalizedIndex(int|ParseTreeNode|null $index): int
     {
         if ($index === null) {
             if ($this->getChildCount() < 2) {

@@ -327,7 +327,12 @@ class LatexParser
                             $this->handleRawEnvironment($stack, $command, $envName, $lexer);
                         } else if ($command->getName() == '\end') {
                             array_pop($stack);
-                            $this->reduceEnvironment($stack, $command, $delimiterStack);
+                            try {
+                                $this->reduceEnvironment($stack, $command, $delimiterStack);
+                            } catch (ParseException $e) {
+                                // if \end cannot be matched we just leave it in as an ordinary CommandNode
+                                $stack[] = $command;
+                            }
                         } else if ($command->getName() === '\usepackage') {
                             $this->detectInputEnc($argNode, $lexer);
                         }
@@ -360,18 +365,25 @@ class LatexParser
             throw new ParseException("Missing environment name in \\end", $endNode->lineNumber);
         }
 
-        $delimiterIndex = empty($delimiterStack) ? -1 : end($delimiterStack)[1];
+        // Use a pointer to simulate the top of the stack without mutating the reference
+        $j = count($delimiterStack) - 1;
+        $delimiterIndex = ($j >= 0) ? $delimiterStack[$j][1] : -1;
+
         $leftBracketStackIndices = [];
         $foundIndex = -1;
+
         for ($i = count($stack) - 1; $i >= 0; $i--) {
             if ($i === $delimiterIndex) {
-                $delimiterRaw = end($delimiterStack)[0];
+                $delimiterRaw = $delimiterStack[$j][0];
                 if ($delimiterRaw === '[') {
                     $leftBracketStackIndices[] = $delimiterIndex;
-                    array_pop($delimiterStack);
-                    $delimiterIndex = empty($delimiterStack) ? -1 : end($delimiterStack)[1];
+
+                    // Move the pointer down instead of popping
+                    $j--;
+                    $delimiterIndex = ($j >= 0) ? $delimiterStack[$j][1] : -1;
                     continue;
                 } else {
+                    // If it's a delimiter but not '[', we stop searching
                     break;
                 }
             }
@@ -386,8 +398,13 @@ class LatexParser
         }
 
         if ($foundIndex === -1) {
+            // Since we only used $j and local variables, $delimiterStack is still intact here
             throw new ParseException("No matching opener found for $envName environment.", $endNode->lineNumber);
         }
+
+        // Success: Commit the changes to the stack by removing the elements we "passed over"
+        // $j is the index of the last element to KEEP.
+        array_splice($delimiterStack, $j + 1);
 
         foreach ($leftBracketStackIndices as $stackIndex) {
             $this->insertTextOrWhitespace($stack, '[', $stack[$stackIndex]->lineNumber, false, $stackIndex);
@@ -509,7 +526,7 @@ class LatexParser
     /**
      * @throws ParseException
      */
-    private function insertTextOrWhitespace(array &$stack, string $content, $lineNumber, bool $isWhitespace, ?int $stackIndex = null): void
+    private function insertTextOrWhitespace(array &$stack, string $content, int $lineNumber, bool $isWhitespace, ?int $stackIndex = null): void
     {
         if ($content === '') return;
 

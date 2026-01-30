@@ -14,15 +14,19 @@ abstract class ParseTreeNode
     public ?ParseTreeNode $parent = null;
 
     /**
-     * @var the textual content of this node
+     * @var ?string the textual content of this node
      */
     protected ?string $text;
 
     /**
-     * @var the full LaTeX string from which this node was constructed during parsing
+     * @var ?string the full LaTeX string from which this node was constructed during parsing
      */
     protected ?string $latex;
 
+    /**
+     * @param int $lineNumber The line number in the original document, will not update if the tree gets modified
+     * after parsing.
+     */
     public function __construct(public int $lineNumber)
     {
         $this->text = null;
@@ -37,12 +41,7 @@ abstract class ParseTreeNode
 
         array_splice($this->children, $this->getNormalizedIndex($index), 0, [$node]);
 
-        $ancestor = $this;
-        while ($ancestor !== null) {
-            $ancestor->text = null;
-            $ancestor->latex = null;
-            $ancestor = $ancestor->parent;
-        }
+        $this->_invalidateTextCache();
     }
 
     public function addChildren(array $nodes, ?int $index = null): void
@@ -53,57 +52,41 @@ abstract class ParseTreeNode
 
         array_splice($this->children, $this->getNormalizedIndex($index), 0, $nodes);
 
-        $ancestor = $this;
-        while ($ancestor !== null) {
-            $ancestor->text = null;
-            $ancestor->latex = null;
-            $ancestor = $ancestor->parent;
-        }
+        $this->_invalidateTextCache();
     }
 
-    public function removeChild(int $index): ?ParseTreeNode
+    public function removeChild(int|ParseTreeNode $indexOrNode): ?ParseTreeNode
     {
-        $index = $this->getNormalizedIndex($index);
+        $index = $this->getNormalizedIndex($indexOrNode);
 
         $removed = array_splice($this->children, $index, 1);
         $removed[0]->parent = null;
 
-        $ancestor = $this;
-        while ($ancestor !== null) {
-            $ancestor->text = null;
-            $ancestor->latex = null;
-            $ancestor = $ancestor->parent;
-        }
+        $this->_invalidateTextCache();
 
         return $removed[0];
     }
 
-    protected function getNormalizedIndex(?int $index): int
+    protected function getNormalizedIndex(int|ParseTreeNode|null $indexOrNode): int
     {
         $childCount = count($this->children);
 
-        if ($index === null) {
-            $index = $childCount;
+        if ($indexOrNode === null) {
+            return $childCount;
+        } elseif ($indexOrNode instanceof ParseTreeNode) {
+            $index = $this->indexOf($indexOrNode);
         } else {
-            if ($index < 0) {
-                $index += $childCount;
-            }
-
-            $index = max($index, 0);
-            $index = min($index, $childCount);
+            $index = $indexOrNode;
         }
+
+        if ($index < 0) {
+            $index += $childCount;
+        }
+
+        $index = max($index, 0);
+        $index = min($index, $childCount);
 
         return $index;
-    }
-
-    public function removeFromParent(): void
-    {
-        if ($this->parent !== null) {
-            $index = $this->parent->indexOf($this);
-            if ($index > -1) {
-                $this->parent->removeChild($index);
-            }
-        }
     }
 
     public function getChildCount(): int
@@ -156,6 +139,16 @@ abstract class ParseTreeNode
             $str .= "\n" . $child->toTreeString($indent . "  ");
         }
         return $str;
+    }
+
+    public function _invalidateTextCache(): void
+    {
+        $ancestor = $this;
+        do {
+            $ancestor->latex = null;
+            $ancestor->text = null;
+            $ancestor = $ancestor->parent;
+        } while ($ancestor !== null);
     }
 
     public function __toString(): string
