@@ -10,6 +10,7 @@ class Lexer
     private int $lineNumber = 1;
     private array $catCodes = [];
     private string $encoding = '';
+    private bool $inSingleToggle = false;
 
     public function __construct(string $source, string $encoding = 'ascii', bool $allowWhitespaceInText = true)
     {
@@ -158,8 +159,10 @@ class Lexer
     private function handleMathShift(): TokenType
     {
         $byte = $this->getCurrentByte();
-        if ($byte !== null && $this->getCatcode($byte) === 3) {
+        if (!$this->inSingleToggle && $byte !== null && $this->getCatcode($byte) === 3) {
             $this->getChar();
+        } else {
+            $this->inSingleToggle = !$this->inSingleToggle;
         }
         return TokenType::MATH_TOGGLE;
     }
