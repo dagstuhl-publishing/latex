@@ -14,6 +14,8 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
     use ParseExitCodes;
     use GetRequestedLatexVersion;
 
+    protected string $pdfLatexBin = 'pdflatex';
+
     private function getProfileCommand(): string
     {
         return __DIR__.'/pdflatex-bibtex-local.sh';
@@ -75,11 +77,18 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
             $env['HOME'] = $latexUserHome;
         }
 
+        $env['PDF_LATEX_BIN'] = $this->pdfLatexBin;
+
         return $asArray
             ? $env
             : Environment::toString($env);
     }
 
+    public function setPdfLatexBin(string $pdfLatexBin): static
+    {
+        $this->pdfLatexBin = $pdfLatexBin;
+        return $this;
+    }
 
     public function getLatexVersion(): string
     {
