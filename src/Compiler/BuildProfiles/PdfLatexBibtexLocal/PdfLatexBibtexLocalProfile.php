@@ -15,6 +15,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
     use GetRequestedLatexVersion;
 
     protected string $pdfLatexBin = 'pdflatex';
+    protected string $bibtexBin = 'bibtex';
 
     private function getProfileCommand(): string
     {
@@ -78,6 +79,7 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
         }
 
         $env['PDF_LATEX_BIN'] = $this->pdfLatexBin;
+        $env['BIBTEX_BIN'] = $this->bibtexBin;
 
         return $asArray
             ? $env
@@ -87,6 +89,12 @@ class PdfLatexBibtexLocalProfile extends BasicProfile implements BuildProfileInt
     public function setPdfLatexBin(string $pdfLatexBin): static
     {
         $this->pdfLatexBin = $pdfLatexBin;
+        return $this;
+    }
+
+    public function setBibtexBin(string $bibtexBin): static
+    {
+        $this->bibtexBin = $bibtexBin;
         return $this;
     }
 

@@ -14,6 +14,7 @@ $path = $_GET['path'];
 $mode = $_GET['mode'] ?? 'full';
 $shellEscape = $_GET['shell-escape'] ?? 0;
 
+$path = str_replace(' ', '+', $path);
 $latexFile = new LatexFile($path);
 $buildProfile = new PdfLatexBibtexLocalProfile($latexFile);
 //$buildProfile->setPdfLatexBin('/Users/m.didas/Docker/docker-latex/docker-pdflatex.sh');

@@ -4,6 +4,10 @@ if [ -z "${PDF_LATEX_BIN}" ]; then
   PDF_LATEX_BIN="pdflatex"
 fi
 
+if [ -z "${BIBTEX_BIN}" ]; then
+  BIBTEX_BIN="bibtex"
+fi
+
 if [[ $1 == '--version' ]]; then
     ${PDF_LATEX_BIN} --version
     exit 0
@@ -17,7 +21,7 @@ if [[ ${PDF_LATEX_BIN} == 'pdflatex' || -z ${PDF_LATEX_BIN} ]]; then
 else
     LATEX_CMD="${PDF_LATEX_BIN} \"${FILE_NAME}\""
 fi
-BIBTEX_CMD="bibtex \"${FILE_NAME}\""
+BIBTEX_CMD="${BIBTEX_BIN} \"${FILE_NAME}\""
 
 
 function run_latex_pass() {
@@ -48,6 +52,12 @@ function another_run_needed() {
         echo -n "- WARNING: undefined references "
         return 1;
     fi
+
+    if grep -q "Rerun to get outlines right" "${FILE_NAME}.log"; then
+        echo -n "- WARNING: from package rerunfilecheck -> rerun to get outlines right "
+        return 1;
+    fi
+
     return 0;
 }
 
