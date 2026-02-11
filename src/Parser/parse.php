@@ -29,6 +29,7 @@ require_once __DIR__ . '/TreeNodes/MathEnvironmentNode.php';
 require_once __DIR__ . '/TreeNodes/CommandNode.php';
 require_once __DIR__ . '/TreeNodes/ArgumentNode.php';
 require_once __DIR__ . '/TreeNodes/GroupNode.php';
+require_once __DIR__ . '/TreeNodes/UnclosedGroupNode.php';
 require_once __DIR__ . '/TreeNodes/CommentNode.php';
 require_once __DIR__ . '/TreeNodes/VerbNode.php';
 
@@ -162,13 +163,13 @@ foreach (generateInput(array_key_exists('f', $options) ? $options['f'] : [], $no
     try {
         $tree = $parser->parse($source);
         $root = $tree->root;
-            if ($verbosity == 2) {
+        if ($verbosity == 2) {
             echo "\n";
             if ($mine) {
-                echo $root->toTreeString();
+                echo $root->toTreeString() . "\n";
 
                 if (array_key_exists('r', $options)) {
-                    echo "\n---------\n";
+                    echo "---------\n";
                     $parseTree = new ParseTree($root, $source);
                     $regex = $options['r'];
 
@@ -186,7 +187,6 @@ foreach (generateInput(array_key_exists('f', $options) ? $options['f'] : [], $no
                 $latex = \PhpLatex_Renderer_Abstract::toLatex($root);
                 echo $latex;
             }
-            echo "\n";
         } elseif ($verbosity == 1) {
             echo "parsed successfully.\n";
         }
