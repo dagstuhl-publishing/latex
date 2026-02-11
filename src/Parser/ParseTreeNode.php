@@ -33,60 +33,76 @@ abstract class ParseTreeNode
         $this->latex = null;
     }
 
-    public function addChild(?ParseTreeNode $node, ?int $index = null): void
+    public function spliceChildren(int|ParseTreeNode|null $indexOrBeforeChild, int $removeLength = 0, array|ParseTreeNode|null $childNodes=null): array
     {
-        if ($node !== null) {
-            $node->parent = $this;
+        $index = $this->getNormalizedIndex($indexOrBeforeChild);
+
+        if ($childNodes instanceof ParseTreeNode) {
+            $childNodes = [$childNodes];
         }
 
-        array_splice($this->children, $this->getNormalizedIndex($index), 0, [$node]);
-
-        $this->_invalidateTextCache();
-    }
-
-    public function addChildren(array $nodes, ?int $index = null): void
-    {
-        foreach ($nodes as $node) {
-            $node->parent = $this;
+        if ($childNodes !== null) {
+            foreach ($childNodes as $child) {
+                $child->parent?->removeChild($child);
+            }
         }
 
-        array_splice($this->children, $this->getNormalizedIndex($index), 0, $nodes);
+        $removed = array_splice($this->children, $index, $removeLength, $childNodes);
+
+        foreach ($removed as $child) {
+            $child->parent = null;
+        }
+
+        if ($childNodes !== null) {
+            foreach ($childNodes as $child) {
+                $child->parent = $this;
+            }
+        }
 
         $this->_invalidateTextCache();
+
+        return $removed;
     }
 
-    public function removeChild(int|ParseTreeNode $indexOrNode): ?ParseTreeNode
+    public function addChild(?ParseTreeNode $node, int|ParseTreeNode|null $indexOrBeforeChild = null): void
     {
-        $index = $this->getNormalizedIndex($indexOrNode);
+        $this->spliceChildren($indexOrBeforeChild, 0, $node);
+    }
 
-        $removed = array_splice($this->children, $index, 1);
-        $removed[0]->parent = null;
+    public function addChildren(array $nodes, int|ParseTreeNode|null $indexOrBeforeChild = null): void
+    {
+        $this->spliceChildren($indexOrBeforeChild, 0, $nodes);
+    }
 
-        $this->_invalidateTextCache();
+    public function removeChild(int|ParseTreeNode $indexOrChild): ParseTreeNode
+    {
+        $removed = $this->spliceChildren($indexOrChild, 1);
 
         return $removed[0];
     }
 
-    protected function getNormalizedIndex(int|ParseTreeNode|null $indexOrNode): int
+    public function removeChildren(int|ParseTreeNode $indexOrChild, int $removeLength): array
+    {
+        return $this->spliceChildren($indexOrChild, $removeLength);
+    }
+
+    protected function getNormalizedIndex(int|ParseTreeNode|null $indexOrChild): int
     {
         $childCount = count($this->children);
 
-        if ($indexOrNode === null) {
+        if ($indexOrChild === null) {
             return $childCount;
-        } elseif ($indexOrNode instanceof ParseTreeNode) {
-            $index = $this->indexOf($indexOrNode);
+        } elseif ($indexOrChild instanceof ParseTreeNode) {
+            $index = $this->indexOf($indexOrChild);
         } else {
-            $index = $indexOrNode;
+            $index = $indexOrChild;
         }
 
         if ($index < 0) {
             $index += $childCount;
         }
 
-        $index = max($index, 0);
-        $index = min($index, $childCount);
-
-        return $index;
+        return max(0, min($index, $childCount));
     }
 
     public function getChildCount(): int
@@ -144,6 +160,7 @@ abstract class ParseTreeNode
     public function _invalidateTextCache(): void
     {
         $ancestor = $this;
+
         do {
             $ancestor->latex = null;
             $ancestor->text = null;

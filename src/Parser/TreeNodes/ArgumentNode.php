@@ -16,4 +16,9 @@ class ArgumentNode extends EnvelopeNode
             new TextNode($lineNumber, $delims[1])
         );
     }
+
+    public function __toString(): string
+    {
+        return parent::__toString() . ($this->isOptional ? ' (optional)' : ' (mandatory)');
+    }
 }

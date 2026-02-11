@@ -20,5 +20,13 @@ class VerbNode extends ParseTreeNode
     {
         return $trim ? trim($this->content) : $this->content;
     }
+
+    public function __toString(): string
+    {
+        $clean = str_replace(["\n", "\r"], ["\\n", "\\r"], $this->content);
+        $display = (strlen($clean) > 40) ? substr($clean, 0, 37) . "..." : $clean;
+        return parent::__toString() . " $this->delimiter$display$this->delimiter";
+    }
+
 }
 
