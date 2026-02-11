@@ -11,6 +11,7 @@ use Dagstuhl\Latex\Parser\TreeNodes\MathEnvironmentNode;
 use Dagstuhl\Latex\Parser\TreeNodes\MathNode;
 use Dagstuhl\Latex\Parser\TreeNodes\RootNode;
 use Dagstuhl\Latex\Parser\TreeNodes\TextNode;
+use Dagstuhl\Latex\Parser\TreeNodes\UnclosedGroupNode;
 use Dagstuhl\Latex\Parser\TreeNodes\VerbNode;
 use Dagstuhl\Latex\Parser\TreeNodes\WhitespaceNode;
 
@@ -34,6 +35,7 @@ class LatexParser
     private array $rawEnvironments = [
         'verbatim',
         'lstlisting',
+        'minted',
         'comment'
     ];
 
@@ -43,73 +45,178 @@ class LatexParser
     public function parse(string $source): ParseTree
     {
         $lexer = new Lexer($source);
+
         $stack = [];
-        $delimiterStack = []; // Local scope tracking
+        $curlyStack = []; // stores indices into $stack to all occurrences of {
+        $delimiterStack = []; // stores [$delimiter, $stackIndex] for all opening delimiters
+        $beginStack = []; // stores [$envName, $stackIndex] for all \\begin{$envName} occurrences
 
         $catcodeState = CatcodeState::IDLE;
         $pendingChar = null;
 
+        $mostRecentCommandNodeIndex = -1;
+        $newlinesSinceMostRecentCommandNode = 0;
+
         while ($token = $lexer->next()) {
             $rawText = substr($source, $token->start, $token->end - $token->start);
 
-            $this->handleCatcodeState($token, $rawText, $lexer, $catcodeState, $pendingChar);
+            echo "\ntoken: " . $token->type->name . " [$rawText]\n";
+            echo "stack (" . count($stack) . "): " . (count($stack) < 10 ? " " : "") . "[" . implode(', ', $stack) . "]\n";
+            echo "curlyStack: [" . implode(', ', array_map(fn($x) => '[' . implode(',', $x) . ']', $curlyStack)) . "]\n";
+            echo "delimiters: [" . implode(', ', array_map(fn($x) => "[\"$x[0]\",$x[1],$x[2]]", $delimiterStack)) . "]\n";
+            echo "beginStack: [" . implode(', ', array_map(fn($x) => "[\"$x[0]\",$x[1]]", $beginStack)) . "]\n";
+            echo "mostRecent: $mostRecentCommandNodeIndex\n";
 
-            // 1. Check for reduction first
-            if ($this->isClosingDelimiter($stack, $token, $rawText, $delimiterStack)) {
-                $this->reduceNode($stack, $token, $rawText, $delimiterStack, $lexer);
-                continue;
-            }
-
-            // 2. Check for shifting/opening
-            if ($this->isOpeningDelimiter($token, $rawText)) {
-                if ($token->type === TokenType::OPT_OPEN) {
-                    $contentIndex = $this->getLastContentIndex($stack);
-                    $contentNode = $contentIndex !== -1 ? $stack[$contentIndex] : null;
-
-                    if (!($contentNode instanceof CommandNode) ||
-                        (strlen($contentNode->getName()) === 2 && $lexer->getCatcode(ord($contentNode->getName()[1])) !== 12)) {
-                        $this->insertTextOrWhitespace($stack, $rawText, $token->lineNumber, false);
-                        continue;
+            foreach ($stack as $node) {
+               if ($node instanceof ParseTreeNode) {
+                    foreach ($node->getChildren() as $child) {
+                        if (!($child instanceof ParseTreeNode)) {
+                            throw new ParseException("Added non-child to node " . $node . "\n", 0);
+                        }
                     }
                 }
+            }
 
-                $delimiterStack[] = [$rawText, count($stack)];
+            $this->handleCatcodeState($token, $rawText, $lexer, $catcodeState, $pendingChar);
+
+            if ($token->type === TokenType::GROUP_OPEN) {
+                $curlyStack[] = [count($stack), $mostRecentCommandNodeIndex];
                 $stack[] = $token;
+                $mostRecentCommandNodeIndex = -1;
                 continue;
             }
 
-            // 3. Special raw command handling
+            if ($this->isClosingDelimiter($token, $rawText, $delimiterStack)) {
+//                if ($token->type === TokenType::GROUP_CLOSE) {
+//                    $commandNodeBeforeGroupIndex = empty($curlyStack) ? -1 : end($curlyStack)[1];
+//                } else {
+//                    $commandNodeBeforeGroupIndex = empty($delimiterStack) ? -1 : end($delimiterStack)[2];
+//                }
+//                echo "commandNodeBeforeGroupIndex: " . $commandNodeBeforeGroupIndex . "\n";
+//
+                $this->reduceNode($stack, $token, $rawText, $delimiterStack, $beginStack, $curlyStack, $lexer);
+
+                if ($token->type === TokenType::GROUP_CLOSE && end($stack) instanceof CommandNode) {
+                    $mostRecentCommandNodeIndex = count($stack) - 1;
+                } else {
+                    $mostRecentCommandNodeIndex = - 1;
+                }
+                $newlinesSinceMostRecentCommandNode = 0;
+                continue;
+            }
+
+            if ($this->isOpeningDelimiter($token, $rawText)) {
+                if ($token->type === TokenType::OPT_OPEN && $mostRecentCommandNodeIndex < 0) {
+                    $stack[] = new TextNode($token->lineNumber, $rawText);
+                } else {
+                    $delimiterStack[] = [$rawText, count($stack), $mostRecentCommandNodeIndex];
+                    $stack[] = $token;
+                    $mostRecentCommandNodeIndex = -1;
+                }
+                continue;
+            }
+
             if ($token->type === TokenType::COMMAND) {
-                if ($rawText === '\verb' || $rawText === '\verb*') {
+                if ($rawText === '\\verb' || $rawText === '\\verb*') {
                     $this->handleVerbatim($stack, $token, $rawText, $lexer);
+                    $mostRecentCommandNodeIndex = -1;
                     continue;
                 }
             }
 
-            if ($token->type === TokenType::TEXT) {
+            if ($token->type === TokenType::TEXT || $token->type === TokenType::OPT_OPEN) {
                 $this->insertTextOrWhitespace($stack, $rawText, $token->lineNumber, false);
+                $mostRecentCommandNodeIndex = -1;
                 continue;
             }
 
             if ($token->type === TokenType::WHITESPACE) {
                 $this->insertTextOrWhitespace($stack, $rawText, $token->lineNumber, true);
+
+                if ($mostRecentCommandNodeIndex >= 0) {
+                    $newlinesInWhitespace = substr_count($rawText, "\n");
+                    $newlinesSinceMostRecentCommandNode += $newlinesInWhitespace;
+                    if ($newlinesSinceMostRecentCommandNode > 1) {
+                        $mostRecentCommandNodeIndex = -1;
+                    }
+                }
+
                 continue;
             }
 
-            // 4. Default: Shift a standard closed node
-            $stack[] = $this->createNodeFromToken($token, $rawText);
+            $node = $this->createNodeFromToken($token, $rawText);
+
+            if ($node instanceof CommandNode) {
+                $mostRecentCommandNodeIndex = count($stack);
+                $newlinesSinceMostRecentCommandNode = 0;
+            } elseif (!($node instanceof CommentNode)) {
+                $mostRecentCommandNodeIndex = -1;
+            }
+
+            $stack[] = $node;
+        }
+
+        $endDocumentIndex = count($stack) - 1;
+        for (; $endDocumentIndex >= 0; $endDocumentIndex--) {
+            $node = $stack[$endDocumentIndex];
+            if ($node instanceof CommandNode &&
+                $node->getName() === '\\end' &&
+                $node->getChildCount() === 2 && // TODO: Watch for Whitespace- / CommandNodes
+                ($child = $node->getChild(1)) instanceof ArgumentNode &&
+                $child->getText() === 'document') {
+                break;
+            }
+        }
+        if ($endDocumentIndex < 0) {
+            $endDocumentIndex = count($stack);
+        }
+
+        $beginDocumentIndex = 0;
+        for (; $beginDocumentIndex < $endDocumentIndex; $beginDocumentIndex++) {
+            $node = $stack[$beginDocumentIndex];
+
+            if ($node instanceof CommandNode &&
+                $node->getName() === '\\begin' &&
+                $node->getChildCount() === 2 && // TODO: watch out for Whitespace- / CommentNodes!
+                ($child = $node->getChild(1)) instanceof ArgumentNode &&
+                $child->getText() === 'document') {
+                break;
+            }
+        }
+        if ($beginDocumentIndex === $endDocumentIndex) {
+            $beginDocumentIndex = -1;
+        }
+
+        while (!empty($delimiterStack) && end($delimiterStack)[0] === '{') {
+            $index = array_pop($delimiterStack)[1];
+            $length = $endDocumentIndex - $index - 1;
+            $groupNode = new UnclosedGroupNode($stack[$index]->lineNumber);
+            $groupNode->addChildren(array_splice($stack, $index + 1, $length));
+            array_splice($stack, $index, 1, [$groupNode]);
+            $endDocumentIndex -= $length;
         }
 
         if (!empty($delimiterStack)) {
-            [$unclosed, $index] = end($delimiterStack);
+            [$unclosed, $index, $_] = end($delimiterStack);
             throw new ParseException("Unclosed delimiter '$unclosed'", $stack[$index]->lineNumber);
         }
 
-        foreach ($stack as $node) {
-            if ($node instanceof CommandNode && $node->getName() === '\begin') {
-                $envName = $this->getEnvironmentName($node);
+        for ($i = 0; $i < $endDocumentIndex; $i++) {
+            if ($i === $beginDocumentIndex) {
+                continue;
+            }
 
-                throw new ParseException("Unclosed " . ($envName ? "environment '$envName'" : "\begin"), $node->lineNumber);
+            $node = $stack[$i];
+            if ($node instanceof CommandNode && $node->getName() === '\\begin') {
+                throw new ParseException("Unclosed environment '" . $this->getEnvironmentName($node) . "'", $node->lineNumber);
+            }
+        }
+
+        if ($endDocumentIndex < count($stack)) {
+            if ($beginDocumentIndex > -1) {
+                $documentNode = new EnvironmentNode('document', $stack[$beginDocumentIndex], $stack[$endDocumentIndex]);
+                $documentNode->addChildren(array_splice($stack, $beginDocumentIndex + 1, $endDocumentIndex - $beginDocumentIndex - 1));
+                array_splice($stack, $beginDocumentIndex, 2, [$documentNode]);
             }
         }
 
@@ -121,7 +228,8 @@ class LatexParser
     /**
      * @throws ParseException
      */
-    private function handleCatcodeState(Token $token, string $raw, Lexer $lexer, CatcodeState &$state, ?int &$pendingChar): void {
+    private function handleCatcodeState(Token $token, string $raw, Lexer $lexer, CatcodeState &$state, ?int &$pendingChar): void
+    {
         // Whitespace and Comments are "transparent"—they don't break the
         // assignment chain, but they also don't provide targets/values.
         if ($token->type === TokenType::WHITESPACE || $token->type === TokenType::COMMENT) {
@@ -131,17 +239,18 @@ class LatexParser
         switch ($state) {
             case CatcodeState::IDLE:
                 if ($token->type === TokenType::COMMAND) {
-                    if ($raw === '\catcode') {
+                    if ($raw === '\\catcode') {
                         $state = CatcodeState::EXPECTING_TARGET;
                         $lexer->setAllowWhitespaceInText(false);
-                    } elseif ($raw === '\makeatletter') {
+                    } elseif ($raw === '\\makeatletter') {
                         $lexer->setCatCode(64, 11);
-                    } elseif ($raw === '\makeatother') {
+                    } elseif ($raw === '\\makeatother') {
                         $lexer->setCatCode(64, 12);
                     }
                 }
                 break;
 
+            /** @noinspection PhpMissingBreakStatementInspection */
             case CatcodeState::EXPECTING_TARGET:
                 if ($token->type === TokenType::TEXT) {
                     $raw = ltrim($raw);
@@ -166,9 +275,9 @@ class LatexParser
             case CatcodeState::EXPECTING_VALUE:
                 if ($token->type === TokenType::COMMAND) {
                     $val = match ($raw) {
-                        '\active' => 13,
-                        '\letter' => 11,
-                        '\other' => 12,
+                        '\\active' => 13,
+                        '\\letter' => 11,
+                        '\\other' => 12,
                         default => throw new ParseException("Unexpected command '$raw' during \\catcode assignment", $token->lineNumber)
                     };
 
@@ -205,7 +314,7 @@ class LatexParser
     private function isOpeningDelimiter(Token $token, string $raw): bool
     {
         if ($token->type === TokenType::COMMAND) {
-            return $raw == '\(' || $raw == '\[';
+            return $raw == '\\(' || $raw == '\\[';
         }
 
         // We only treat these as openers.
@@ -217,17 +326,14 @@ class LatexParser
         ], true);
     }
 
-    /**
-     * @throws ParseException
-     */
-    private function isClosingDelimiter(array &$stack, Token $token, string $raw, array &$delimiterStack): bool
+    private function isClosingDelimiter(Token $token, string $raw, array $delimiterStack): bool
     {
         if ($token->type === TokenType::GROUP_CLOSE || $token->type === TokenType::OPT_CLOSE) {
             return true;
         }
 
         if ($token->type === TokenType::COMMAND) {
-            return $raw == '\)' || $raw == '\]';
+            return $raw == '\\)' || $raw == '\\]';
         }
 
         if ($token->type === TokenType::MATH_TOGGLE) {
@@ -248,179 +354,197 @@ class LatexParser
     }
 
     /**
-     * This is the main method that creates tree node from the stack when certain tokens are encountered.
-     *
      * @throws ParseException
      */
-    private function reduceNode(array &$stack, Token $closer, string $raw, array &$delimiterStack, $lexer): void
+    private function reduceNode(array &$stack, Token $closer, string $raw, array &$delimiterStack, array &$beginStack, array &$curlyStack, Lexer $lexer): void
     {
-        $openerRaw = null;
-
-        if (empty($delimiterStack)) {
-            $isMatch = false;
-        } else {
-            $openerRaw = end($delimiterStack)[0];
-
-            if ($raw !== ']') {
-                $leftBracketStackIndices = [];
-
-                while ($openerRaw === '[') {
-                    $leftBracketStackIndices[] = end($delimiterStack)[1];
-                    array_pop($delimiterStack);
-                    $openerRaw = empty($delimiterStack) ? null : end($delimiterStack)[0];
-                }
-
-                for ($j = 0; $j < count($leftBracketStackIndices); $j++) {
-                    $stackIndex = $leftBracketStackIndices[$j];
-                    $this->insertTextOrWhitespace($stack, '[', $stack[$stackIndex]->lineNumber, false, $stackIndex);
-                }
+        if ($closer->type === TokenType::GROUP_CLOSE) {
+            if (empty($curlyStack)) {
+                throw new ParseException("Unmatched '}'", $closer->lineNumber);
             }
 
-            $isMatch = match($raw) {
-                '}'       => $openerRaw === '{',
-                ']'       => $openerRaw === '[',
-                '\]'      => $openerRaw === '\[',
-                '\)'      => $openerRaw === '\(',
-                '$', '$$' => $openerRaw === $raw,
-                default   => false
-            };
-        }
+            [$openerStackIndex, $commandNodeIndex] = array_pop($curlyStack);
 
-        if ($isMatch) {
-            // --- 1. Perform Reduction ---
-            $stackIndex = array_pop($delimiterStack)[1];
-            $children = array_splice($stack, $stackIndex + 1);
-            $opener = array_pop($stack);
+            $opener = $stack[$openerStackIndex];
+            $this->unstack($delimiterStack, $stack, null, $openerStackIndex + 1);
+            $this->unstack($beginStack, $stack, null, $openerStackIndex + 1);
 
-            if (in_array($raw, ['$', '$$', '\]', '\)'])) {
-                $openingNode = ($opener->type === TokenType::COMMAND) ? new CommandNode($opener->lineNumber, $openerRaw) : new TextNode($opener->lineNumber, $openerRaw);
-                $closingNode = ($closer->type === TokenType::COMMAND) ? new CommandNode($closer->lineNumber, $raw) : new TextNode($closer->lineNumber, $raw);
-                $mathNode = new MathNode($opener->lineNumber, $openingNode, $closingNode);
-                $mathNode->addChildren($children);
-                $stack[] = $mathNode;
-            } else {  // $raw is ']' or '}'
-                $isOptional = ($opener->type === TokenType::OPT_OPEN);
-                $contentIndex = $this->getLastContentIndex($stack);
-                $contentNode = $contentIndex !== -1 ? $stack[$contentIndex] : null;
-                $isArgument = $isOptional || (
-                    $contentNode instanceof CommandNode && (
-                        strlen($contentNode->getName()) > 2 || (
-                            strlen($contentNode->getName()) > 1 &&
-                            $lexer->getCatcode(ord($contentNode->getName()[1])) === 12
-                        )
-                    ));
-
-                if ($isArgument) {
-                    $command = $stack[$contentIndex];
-                    $command->addChildren(array_splice($stack, $contentIndex + 1));
-
-                    $argNode = new ArgumentNode($opener->lineNumber, $isOptional);
-                    $argNode->addChildren($children);
-                    $command->addChild($argNode);
-
-                    if (!$isOptional) {
-                        $envName = $this->getEnvironmentName($command);
-
-                        if ($command->getName() == '\begin' &&
-                            in_array($envName, $this->rawEnvironments, true)) {
-                            array_pop($stack);
-                            $this->handleRawEnvironment($stack, $command, $envName, $lexer);
-                        } else if ($command->getName() == '\end') {
-                            array_pop($stack);
-                            try {
-                                $this->reduceEnvironment($stack, $command, $delimiterStack);
-                            } catch (ParseException $e) {
-                                // if \end cannot be matched we just leave it in as an ordinary CommandNode
-                                $stack[] = $command;
-                            }
-                        } else if ($command->getName() === '\usepackage') {
-                            $this->detectInputEnc($argNode, $lexer);
-                        }
-                    }
-                } else {
-                    // Brackets won't reach here anymore because they aren't pushed to delimiterStack
-                    // unless there is a CommandNode. Only {} groups fall through here.
-                    $groupNode = new GroupNode($opener->lineNumber);
-                    $groupNode->addChildren($children);
-                    $stack[] = $groupNode;
-                }
-            }
-        } else {
-            if ($raw === ']') {
-                $this->insertTextOrWhitespace($stack, ']', $closer->lineNumber, false);
+            if ($commandNodeIndex < 0) {
+                $groupNode = new GroupNode($opener->lineNumber);
+                $groupNode->addChildren(array_splice($stack, $openerStackIndex + 1));
+                array_splice($stack, $openerStackIndex, 1, [$groupNode]);
             } else {
-                throw new ParseException("Unmatched closing delimiter '$raw'", $closer->lineNumber);
+                [$command, $argNode] = $this->addArgumentToCommandNode($stack[$openerStackIndex], false, $stack, $openerStackIndex, $commandNodeIndex);
+
+                $envName = $this->getEnvironmentName($command);
+
+                if ($command->getName() == '\\begin') {
+                    if (in_array($envName, $this->rawEnvironments, true)) {
+                        array_pop($stack);
+                        $this->handleRawEnvironment($stack, $command, $envName, $lexer);
+                    } else {
+                        $beginStack[] = [$envName, $commandNodeIndex];
+                    }
+                } elseif ($command->getName() == '\\end') {
+                    array_pop($stack);
+                    $this->reduceEnvironment($stack, $command, $envName, $curlyStack, $beginStack, $delimiterStack);
+                } elseif ($command->getName() === '\\usepackage') {
+                    $this->detectInputEnc($argNode, $lexer);
+                }
+            }
+        } elseif ($closer->type === TokenType::OPT_CLOSE) {
+            [$lastCurlyIndex, $lastBeginIndex, $openerStackIndex, $mostRecentCommandNodeIndex] = $this->getStackIndices($curlyStack, $beginStack, $delimiterStack, '[');
+
+            if ($openerStackIndex === -1 ||
+                $mostRecentCommandNodeIndex < 0 ||
+                $lastCurlyIndex > $openerStackIndex ||
+                $lastBeginIndex > $openerStackIndex) {
+                $this->insertTextOrWhitespace($stack, $raw, $closer->lineNumber, false);
+            } else {
+                $this->unstack($delimiterStack, $stack, null, $openerStackIndex + 1);
+                $this->unstack($beginStack, $stack, null, $openerStackIndex + 1);
+                $this->addArgumentToCommandNode($stack[$openerStackIndex], true, $stack, $openerStackIndex, $mostRecentCommandNodeIndex);
+                array_pop($delimiterStack);
+            }
+        } else if ($raw === '$' || $raw === '$$') {
+            [$lastCurlyIndex, $lastBeginIndex, $openerStackIndex, $_] = $this->getStackIndices($curlyStack, $beginStack, $delimiterStack, $raw);
+
+            if ($lastCurlyIndex > $openerStackIndex ||
+                $lastBeginIndex > $openerStackIndex) {
+                $delimiterStack[] = [$raw, count($stack), -1];
+                $stack[] = $closer;
+            } else {
+                $this->unstack($delimiterStack, $stack, null, $openerStackIndex + 1);
+                $this->unstack($beginStack, $stack, null, $openerStackIndex + 1);
+
+                $this->finalizeDelimiters($stack, $openerStackIndex, $raw, $closer, $raw);
+                array_pop($delimiterStack);
+            }
+        } else {
+            $openerRaw = match ($raw) {
+                '\\]' => '\\[',
+                '\\)' => '\\(',
+            };
+
+            [$lastCurlyIndex, $lastBeginIndex, $openerStackIndex, $_] = $this->getStackIndices($curlyStack, $beginStack, $delimiterStack, $openerRaw);
+
+            if ($openerStackIndex < 0 ||
+                $lastCurlyIndex > $openerStackIndex ||
+                $lastBeginIndex > $openerStackIndex) {
+                if ($openerStackIndex >= 0) {
+                    $stack[$openerStackIndex] = $this->createNodeFromToken($stack[$openerStackIndex], $openerRaw);
+                }
+                $stack[] = $this->createNodeFromToken($closer, $raw);
+                array_pop($delimiterStack);
+            } else {
+                $this->unstack($delimiterStack, $stack, null, $openerStackIndex + 1);
+                $this->unstack($beginStack, $stack, null, $openerStackIndex + 1);
+
+                $this->finalizeDelimiters($stack, $openerStackIndex, $openerRaw, $closer, $raw);
+                array_pop($delimiterStack);
             }
         }
     }
 
     /**
-     * @throws ParseException
+     * @param array $curlyStack
+     * @param array $beginStack
+     * @param array $delimiterStack
+     * @param string $delimiter
+     * @return array
      */
-    private function reduceEnvironment(array &$stack, CommandNode $endNode, array &$delimiterStack): void
+    private function getStackIndices(array $curlyStack, array $beginStack, array $delimiterStack, string|null $delimiter): array
     {
-        $envName = $this->getEnvironmentName($endNode);
+        $lastCurlyIndex = empty($curlyStack) ? -1 : end($curlyStack)[0];
+        $lastBeginIndex = empty($beginStack) ? -1 : end($beginStack)[1];
+        $openerStackIndex = -1;
+        $mostRecentCommandNodeIndex = -1;
 
-        if ($envName === null) {
-            throw new ParseException("Missing environment name in \\end", $endNode->lineNumber);
-        }
-
-        // Use a pointer to simulate the top of the stack without mutating the reference
-        $j = count($delimiterStack) - 1;
-        $delimiterIndex = ($j >= 0) ? $delimiterStack[$j][1] : -1;
-
-        $leftBracketStackIndices = [];
-        $foundIndex = -1;
-
-        for ($i = count($stack) - 1; $i >= 0; $i--) {
-            if ($i === $delimiterIndex) {
-                $delimiterRaw = $delimiterStack[$j][0];
-                if ($delimiterRaw === '[') {
-                    $leftBracketStackIndices[] = $delimiterIndex;
-
-                    // Move the pointer down instead of popping
-                    $j--;
-                    $delimiterIndex = ($j >= 0) ? $delimiterStack[$j][1] : -1;
-                    continue;
-                } else {
-                    // If it's a delimiter but not '[', we stop searching
-                    break;
-                }
-            }
-
-            $node = $stack[$i];
-            if ($node instanceof CommandNode
-                && $node->getName() === '\begin'
-                && $this->getEnvironmentName($node) === $envName) {
-                $foundIndex = $i;
+        for ($i = count($delimiterStack) - 1; $i >= 0; $i--) {
+            [$delimiterStackRawText, $openerStackIndex, $mostRecentCommandNodeIndex] = $delimiterStack[$i];
+            if ($delimiterStackRawText === $delimiter) {
                 break;
             }
         }
+        return [$lastCurlyIndex, $lastBeginIndex, $openerStackIndex, $mostRecentCommandNodeIndex];
+    }
 
-        if ($foundIndex === -1) {
-            // Since we only used $j and local variables, $delimiterStack is still intact here
-            throw new ParseException("No matching opener found for $envName environment.", $endNode->lineNumber);
+    /**
+     * @param array $stack
+     * @param mixed $openerStackIndex
+     * @param string $openerRaw
+     * @param Token $closer
+     * @param string $closerRaw
+     * @return array
+     */
+    public function finalizeDelimiters(array &$stack, mixed $openerStackIndex, string $openerRaw, Token $closer, string $closerRaw): void
+    {
+        $opener = $stack[$openerStackIndex];
+
+        $openingNode = ($opener->type === TokenType::COMMAND) ? new CommandNode($opener->lineNumber, $openerRaw) : new TextNode($opener->lineNumber, $openerRaw);
+        $closingNode = ($closer->type === TokenType::COMMAND) ? new CommandNode($closer->lineNumber, $closerRaw) : new TextNode($closer->lineNumber, $closerRaw);
+        $mathNode = new MathNode($opener->lineNumber, $openingNode, $closingNode);
+        $mathNode->addChildren(array_splice($stack, $openerStackIndex + 1));
+        array_splice($stack, $openerStackIndex, 1, [$mathNode]);
+    }
+
+    /**
+     * @throws ParseException
+     */
+    private function unstack(array &$auxStack, array &$stack, string|null $stop, int $minStackIndex = 0): int
+    {
+        while (!empty($auxStack)) {
+            $top = array_pop($auxStack);
+            $raw = $top[0];
+            $stackIndex = $top[1];
+
+            if ($raw === $stop) {
+                return $stackIndex;
+            } elseif ($stackIndex < $minStackIndex) {
+                $auxStack[] = $top;
+                return $minStackIndex;
+            }
+
+            $stackElement = $stack[$stackIndex];
+
+            if ($stackElement instanceof Token) {
+                $lineNumber = $stackElement->lineNumber;
+
+                if (in_array($raw, ['$', '$$', '\\]', '\\)'])) {
+                    $stack[$stackIndex] = new CommandNode($lineNumber, $raw);
+                } else {
+                    $this->insertTextOrWhitespace($stack, $raw, $lineNumber, false, $stackIndex);
+                }
+            }
         }
 
-        // Success: Commit the changes to the stack by removing the elements we "passed over"
-        // $j is the index of the last element to KEEP.
-        array_splice($delimiterStack, $j + 1);
+        return -1;
+    }
 
-        foreach ($leftBracketStackIndices as $stackIndex) {
-            $this->insertTextOrWhitespace($stack, '[', $stack[$stackIndex]->lineNumber, false, $stackIndex);
-        }
+    /**
+     * @throws ParseException
+     */
+    private function reduceEnvironment(array &$stack, CommandNode $endNode, string $envName, array $curlyStack, array &$beginStack, array &$delimiterStack): void
+    {
+        [$lastCurlyIndex, $lastBeginIndex, $_, $_] = $this->getStackIndices($curlyStack, $beginStack, $delimiterStack, null);
 
-        $body = array_splice($stack, $foundIndex + 1);
-        $beginNode = array_pop($stack);
-
-        if (in_array($envName, $this->mathEnvironments)) {
-            $envNode = new MathEnvironmentNode($beginNode->lineNumber, $envName, $beginNode, $endNode);
+        if ($lastBeginIndex === -1 || $lastBeginIndex < $lastCurlyIndex) {
+            $stack[] = $endNode;
         } else {
-            $envNode = new EnvironmentNode($beginNode->lineNumber, $envName, $beginNode, $endNode);
-        }
+            $this->unstack($delimiterStack, $stack, null, $lastBeginIndex);
+            $this->unstack($beginStack, $stack, null, $lastBeginIndex);
 
-        $envNode->addChildren($body);
-        $stack[] = $envNode;
+            $beginNode = $stack[$lastBeginIndex];
+
+            if (in_array($envName, $this->mathEnvironments)) {
+                $envNode = new MathEnvironmentNode($envName, $beginNode, $endNode);
+            } else {
+                $envNode = new EnvironmentNode($envName, $beginNode, $endNode);
+            }
+
+            $envNode->addChildren(array_splice($stack, $lastBeginIndex + 1));
+            array_splice($stack, $lastBeginIndex, 1, [$envNode]);
+        }
     }
 
     private function getEnvironmentName(CommandNode $command): ?string
@@ -464,12 +588,12 @@ class LatexParser
 
         $child = new TextNode($beginCommand->lineNumber, $rawText);
 
-        $endCommand = new CommandNode($lineNumber,'\end');
+        $endCommand = new CommandNode($lineNumber, '\\end');
         $endArgument = new ArgumentNode($lineNumber, false);
         $endArgument->addChild(new TextNode($lineNumber, $envName));
         $endCommand->addChild($endArgument);
 
-        $envNode = new EnvironmentNode($beginCommand->lineNumber, $envName, $beginCommand, $endCommand);
+        $envNode = new EnvironmentNode($envName, $beginCommand, $endCommand);
         $envNode->addChild($child);
 
         $stack[] = $envNode;
@@ -501,8 +625,8 @@ class LatexParser
         $lineNumber = $token->lineNumber;
 
         return match ($token->type) {
-            TokenType::COMMAND    => new CommandNode($lineNumber, $rawText),
-            TokenType::COMMENT    => new CommentNode($lineNumber, $rawText),
+            TokenType::COMMAND => new CommandNode($lineNumber, $rawText),
+            TokenType::COMMENT => new CommentNode($lineNumber, $rawText),
             // MATH_TOGGLE ($ or $$) can be pushed as a TextNode initially,
             // then handled by reduceNode.
             TokenType::ALIGN_TAB,
@@ -511,9 +635,33 @@ class LatexParser
         };
     }
 
-    private function getLastContentIndex(array $stack): int
+    /**
+     * @param mixed $opener
+     * @param array $stack
+     * @param mixed $openerStackIndex
+     * @param mixed $mostRecentCommandNodeIndex
+     * @return array
+     */
+    public function addArgumentToCommandNode(Token $opener, bool $isOptional, array &$stack, mixed $openerStackIndex, mixed $mostRecentCommandNodeIndex): array
     {
-        for ($i = count($stack) - 1; $i >= 0; $i--) {
+        $argNode = new ArgumentNode($opener->lineNumber, $isOptional);
+        $argNode->addChildren(array_splice($stack, $openerStackIndex + 1));
+        array_pop($stack);
+
+        $command = $stack[$mostRecentCommandNodeIndex];
+        $command->addChildren(array_splice($stack, $mostRecentCommandNodeIndex + 1));
+        $command->addChild($argNode);
+
+        return [$command, $argNode];
+    }
+
+    private function getLastContentIndex(array $stack, int $offset = -1): int
+    {
+        if ($offset < 0) {
+            $offset += count($stack);
+        }
+
+        for ($i = $offset; $i >= 0; $i--) {
             $node = $stack[$i];
             if (!$node instanceof WhitespaceNode && !$node instanceof CommentNode) {
                 return $i;
