@@ -23,7 +23,7 @@ class CommentNode extends ParseTreeNode
 
     public function __toString(): string
     {
-        $clean = trim(str_replace(["\n", "\r"], ["", ""], $this->raw));
+        $clean = trim(str_replace(["\n", "\r"], ['\n', '\r'], $this->raw));
         return parent::__toString() . ": " . $clean;
     }
 }

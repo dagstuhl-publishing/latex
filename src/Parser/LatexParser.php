@@ -131,7 +131,7 @@ class LatexParser
                             }
 
                             if ($k >= 0) {
-                                $this->reduceNode($stack, $k);
+                                $this->reduceNode($stack, $k, "called from MathNode closer $commandName");
                                 $prevNode = array_pop($stack);
                                 $prevNode->getClosing()->lineNumber = $lineNumber;
                             } else {
@@ -199,7 +199,7 @@ class LatexParser
                         }
                     }
                     if ($k >= 0) {
-                        $this->reduceNode($stack, $k);
+                        $this->reduceNode($stack, $k, "called from " . get_class($stackNode) . " closer");
                         $prevNode = array_pop($stack);
 
                         $commandNode = $prevNode->parent;
@@ -268,7 +268,7 @@ class LatexParser
 
                                 if ($k >= 0) {
                                     $commandNode->parent->removeChild($commandNode);
-                                    $this->reduceNode($stack, $k);
+                                    $this->reduceNode($stack, $k, "called from \\end\{$envName}\}");
                                     $envNode = array_pop($stack);
 
                                     // when creating the parent, we used a placeholder $closing node
@@ -314,7 +314,7 @@ class LatexParser
                             }
                         }
 
-                        $this->reduceNode($stack, $k);
+                        $this->reduceNode($stack, $k, "called from end of MathNode ($char)");
                         $prevNode = array_pop($stack);
                         $prevNode->getClosing()->lineNumber = $lineNumber;
                     } else {
@@ -396,6 +396,7 @@ class LatexParser
                     for (; $j < $n; $j++) {
                         $catCode = $catCodes[ord($source[$j])];
                         if ($catCode === self::CAT_CODE_END_OF_LINE) {
+                            $j++;
                             break;
                         }
                     }
@@ -458,10 +459,10 @@ class LatexParser
         return new ParseTree($rootNode);
     }
 
-    private function reduceNode(array &$stack, int $stackIndex): void
+    private function reduceNode(array &$stack, int $stackIndex, string $debugInfo = ''): void
     {
 //        echo "--->>>------------\n";
-//        echo "reduceNode\n";
+//        echo "reduceNode" . ($debugInfo !== '' ? ", $debugInfo" : '') . "\n";
 //        echo "until node: $stack[$stackIndex]\n";
 //        echo "stack: [" . implode(', ', $stack) . "]\n";
 
