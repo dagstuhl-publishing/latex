@@ -2,9 +2,12 @@
 
 namespace Dagstuhl\Latex\Parser;
 
+use Dagstuhl\Latex\Parser\TreeNodes\CommandNode;
 use Dagstuhl\Latex\Parser\TreeNodes\CommentNode;
+use Dagstuhl\Latex\Parser\TreeNodes\EnvironmentNode;
 use Dagstuhl\Latex\Parser\TreeNodes\RootNode;
 use Dagstuhl\Latex\Parser\TreeNodes\TextNode;
+use http\Env;
 
 class ParseTree
 {
@@ -56,6 +59,49 @@ class ParseTree
         } else {
             return $path;
         }
+    }
+
+    public function getEnvironments(string $name): array
+    {
+        $environments = [];
+        $this->collectEnvironments($name, $this->root, $environments);
+        return $environments;
+    }
+
+    private function collectEnvironments(string $name, ParseTreeNode $node, array $environments): void
+    {
+        if (
+            $node instanceof EnvironmentNode &&
+            $node->getName() === $name
+        ) {
+            $environments[] = $node->toLatex();
+        }
+
+        foreach ($node->getChildren() as $child) {
+            $this->collectEnvironments($name, $child, $environments);
+        }
+    }
+
+    public function getMacros(string $name): array
+    {
+        $macros = [];
+        $this->collectMacros($name, $this->root, $macros);
+        return $macros;
+    }
+
+    private function collectMacros(string $name, ParseTreeNode $node, array $macros): void
+    {
+        if (
+            $node instanceof CommandNode &&
+            $node->getName() === $name
+        ) {
+            $macros[] = $node->toLatex();
+        }
+
+        foreach ($node->getChildren() as $child) {
+            $this->collectMacros($name, $child, $macros);
+        }
+
     }
     
     public function insertText(string $text, int $charIndex): TextNode
