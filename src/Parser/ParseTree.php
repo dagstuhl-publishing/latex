@@ -2,12 +2,16 @@
 
 namespace Dagstuhl\Latex\Parser;
 
+use Dagstuhl\Latex\LatexStructures\LatexEnvironment;
+use Dagstuhl\Latex\Parser\TreeNodes\ArgumentNode;
 use Dagstuhl\Latex\Parser\TreeNodes\CommandNode;
 use Dagstuhl\Latex\Parser\TreeNodes\CommentNode;
 use Dagstuhl\Latex\Parser\TreeNodes\EnvironmentNode;
 use Dagstuhl\Latex\Parser\TreeNodes\RootNode;
 use Dagstuhl\Latex\Parser\TreeNodes\TextNode;
+use Dagstuhl\Latex\Parser\TreeNodes\WhitespaceNode;
 use http\Env;
+use PhpParser\Node\Arg;
 
 class ParseTree
 {
@@ -74,7 +78,20 @@ class ParseTree
             $node instanceof EnvironmentNode &&
             $node->getName() === $name
         ) {
-            $environments[] = $node->toLatex();
+            $options = '';
+            foreach ($node->getChild(0)->getChildren() as $child) {
+                if ($child instanceof ArgumentNode && $child->isOptional) {
+                    $options .= $child->toLatex();
+                }
+            }
+
+            $environments[] = new LatexEnvironment([
+                'name' => $name,
+                'header' => $node->getChild(0)->toLatex(),
+                'options' => $options,
+                'contents' => $node->toLatex(),
+                'latexFile' => NULL
+            ]);
         }
 
         foreach ($node->getChildren() as $child) {
