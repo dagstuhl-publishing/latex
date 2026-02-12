@@ -19,7 +19,7 @@ use PhpParser\Node\Arg;
 
 class LatexParser
 {
-    private array $mathEnvironments = [
+    private const mathEnvironments = [
         'math',
         'displaymath',
         'equation', 'equation*',
@@ -34,12 +34,25 @@ class LatexParser
         'rcases', 'rcases*'
     ];
 
-    private array $rawEnvironments = [
-        'verbatim',
-        'lstlisting',
-        'minted',
-        'comment'
+    private const rawEnvironments = [
+        'alltt', 'abscode', 'allinlustre', 'allinlustre-figure', 'AnerisPLsmall', 'ainflisting',
+        'bull', 'BVerbatim',
+        'chorlisting', 'chorallisting', 'code', 'codeblock', 'codeblockcss', 'codejava', 'coq', 'coqlisting', 'clang-figure', 'clang',
+        'excerpt', 'excerpt*', 'easycrypt',
+        'FigureVerbatim',
+        'granule', 'gql*', 'haskell', 'Highlighting',
+        'InlineVerbatim', 'isabelle',
+        'javacode', 'javan', 'javalisting',
+        'listingLemma', 'listingJolie', 'lstlisting', 'longcode', 'langlisting', 'leanlisting',
+        'minted', 'mcode', 'mzn', 'myequations',
+        'numcodejava', 'nicehaskell', 'numpylisting', 'numberedprogram',
+        'ocalm', 'OCAMLLISTING',
+        'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO', 'pseudolisting',
+        'rustlisting',
+        'scalalisting',
+        'verbatim', 'VerbatimFigure'
     ];
+
 
     const CAT_CODE_ESCAPE = 0;
     const CAT_CODE_GROUP_BEGIN = 1;
@@ -131,7 +144,7 @@ class LatexParser
                             }
 
                             if ($k >= 0) {
-                                $this->reduceNode($stack, $k, "called from MathNode closer $commandName");
+                                $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from MathNode closer $commandName");
                                 $prevNode = array_pop($stack);
                                 $prevNode->getClosing()->lineNumber = $lineNumber;
                             } else {
@@ -179,6 +192,7 @@ class LatexParser
                     break;
 
                 case self::CAT_CODE_GROUP_BEGIN:
+//                    echo "pushing curlyIndex: $i\n";
                     $curlyIndices[] = $i;
                     if ($acceptingArguments) {
                         $node = new ArgumentNode($lineNumber, false);
@@ -188,7 +202,8 @@ class LatexParser
                     break;
 
                 case self::CAT_CODE_GROUP_END:
-                    array_pop($curlyIndices);
+                    $curlyOpener = array_pop($curlyIndices);
+//                    echo "popping curlyIndex: $curlyOpener @ $i\n";
 
                     $k = count($stack) - 1;
                     for (; $k >= 0; --$k) {
@@ -199,7 +214,7 @@ class LatexParser
                         }
                     }
                     if ($k >= 0) {
-                        $this->reduceNode($stack, $k, "called from " . get_class($stackNode) . " closer");
+                        $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from " . get_class($stackNode) . " closer");
                         $prevNode = array_pop($stack);
 
                         $commandNode = $prevNode->parent;
@@ -212,7 +227,7 @@ class LatexParser
                                 $parent = $commandNode->parent;
                                 $envName = $prevNode->getText();
 
-                                if (in_array($envName, $this->rawEnvironments)) {
+                                if (in_array($envName, self::rawEnvironments)) {
                                     $contentLineNumber = $lineNumber;
                                     $closingString = "\\end{{$envName}}";
 
@@ -243,7 +258,7 @@ class LatexParser
                                     $closingArg->addChild($closingArgText);
                                     $closing->addChild($closingArg);
 
-                                    if (in_array($envName, $this->mathEnvironments)) {
+                                    if (in_array($envName, self::mathEnvironments)) {
                                         $envNode = new MathEnvironmentNode($envName, $commandNode, $closing);
                                     } else {
                                         $envNode = new EnvironmentNode($envName, $commandNode, $closing);
@@ -268,7 +283,7 @@ class LatexParser
 
                                 if ($k >= 0) {
                                     $commandNode->parent->removeChild($commandNode);
-                                    $this->reduceNode($stack, $k, "called from \\end\{$envName}\}");
+                                    $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from \\end\{$envName}\}");
                                     $envNode = array_pop($stack);
 
                                     // when creating the parent, we used a placeholder $closing node
@@ -295,7 +310,11 @@ class LatexParser
                     break;
 
                 case self::CAT_CODE_MATH_SHIFT:
-                    if ($i + 1 < $n && $catCodes[ord($source[$i + 1])] === self::CAT_CODE_MATH_SHIFT) {
+                    if (
+                        $i + 1 < $n &&
+                        $catCodes[ord($source[$i + 1])] === self::CAT_CODE_MATH_SHIFT &&
+                        end($dollarIndices) <= end($doubleDollarIndices)
+                    ) {
                         $i++;
                         $char .= $source[$i];
                         $mathIndices = &$doubleDollarIndices;
@@ -304,7 +323,8 @@ class LatexParser
                     }
 
                     if (end($curlyIndices) < end($mathIndices)) {
-                        array_pop($mathIndices);
+                        $mathIndex = array_pop($mathIndices);
+//                        echo "popping mathIndex: $mathIndex\n";
                         $k = count($stack) - 1;
 
                         for (; $k >= 0; $k--) {
@@ -314,11 +334,12 @@ class LatexParser
                             }
                         }
 
-                        $this->reduceNode($stack, $k, "called from end of MathNode ($char)");
+                        $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from end of MathNode ($char)");
                         $prevNode = array_pop($stack);
                         $prevNode->getClosing()->lineNumber = $lineNumber;
                     } else {
                         $mathIndices[] = $i;
+//                        echo "pushing mathIndex: $i\n";
                         $node = new MathNode($lineNumber, new CommandNode($lineNumber, $char), new CommandNode($lineNumber, $char));
                     }
                     break;
@@ -459,23 +480,32 @@ class LatexParser
         return new ParseTree($rootNode);
     }
 
-    private function reduceNode(array &$stack, int $stackIndex, string $debugInfo = ''): void
+    private function reduceNode(array &$stack, int $stackIndex, &$dollarIndices, &$doubleDollarIndices, string $debugInfo = ''): void
     {
-//        echo "--->>>------------\n";
+//        echo "---<reduceNode>------------\n";
 //        echo "reduceNode" . ($debugInfo !== '' ? ", $debugInfo" : '') . "\n";
-//        echo "until node: $stack[$stackIndex]\n";
+//        echo "until node ($stackIndex): ";
+//        echo "$stack[$stackIndex]\n";
 //        echo "stack: [" . implode(', ', $stack) . "]\n";
 
         $node = $stack[$stackIndex];
         $stackSize = count($stack);
         $children = [];
 
-        for ($i = $stackIndex + 1; $i < $stackIndex; $i++) {
+        for ($i = $stackIndex + 1; $i < $stackSize; $i++) {
             $reducedNode = $stack[$i];
             if (!($reducedNode instanceof CommandNode)) {
                 if ($reducedNode->getChildCount() > 0) {
                     array_push($children, ...$reducedNode->getChildren());
                     array_pop($children);
+                }
+
+                if ($reducedNode instanceof MathNode) {
+                    if ($reducedNode->getOpening()->getText() === '$') {
+                        array_pop($dollarIndices);
+                    } elseif ($reducedNode->getOpening()->getText() === '$$') {
+                        array_pop($doubleDollarIndices);
+                    }
                 }
             }
         }
@@ -488,6 +518,6 @@ class LatexParser
             $node->addChildren($children);
         }
 
-//        echo "---<<<------------\n";
+//        echo "---</reducenode>------------\n";
     }
 }
