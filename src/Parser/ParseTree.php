@@ -3,6 +3,7 @@
 namespace Dagstuhl\Latex\Parser;
 
 use Dagstuhl\Latex\LatexStructures\LatexEnvironment;
+use Dagstuhl\Latex\LatexStructures\LatexMacro;
 use Dagstuhl\Latex\Parser\TreeNodes\ArgumentNode;
 use Dagstuhl\Latex\Parser\TreeNodes\CommandNode;
 use Dagstuhl\Latex\Parser\TreeNodes\CommentNode;
@@ -116,6 +117,27 @@ class ParseTree
             $node instanceof CommandNode &&
             $node->getName() === $name
         ) {
+            $options = [];
+            $arguments = [];
+
+            foreach ($node->getChild(0)->getChildren() as $child) {
+                if ($child instanceof ArgumentNode) {
+                    if ($child->isOptional) {
+                        $options[] = $child->getText();
+                    } else {
+                        $arguments[] = $child->getText();
+                    }
+                }
+            }
+
+            $macros[] = new LatexMacro([
+                'name' => $name,
+                'options' => $options,
+                'arguments' => $arguments,
+                'snippet' => $node->toLatex(),
+                'latexFile' => NULL
+            ]);
+
             $macros[] = $node->toLatex();
         }
 
