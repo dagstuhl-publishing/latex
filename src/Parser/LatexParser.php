@@ -367,7 +367,15 @@ class LatexParser
                     ) {
                         $prevNode = array_pop($stack);
                         break;
+                    } else if (
+                        $char === ',' &&
+                        end($stack) instanceof ArgumentNode &&
+                        end($stack)->isOptional
+                    ) {
+                        $node = new TextNode($lineNumber, $char);
+                        break;
                     }
+
                     // NOTE: intended fall-through in 'else' case
 
                 case self::CAT_CODE_END_OF_LINE:
@@ -398,7 +406,15 @@ class LatexParser
                             $node = new WhitespaceNode($nodeLineNumber, substr($source, $i, $j - $i));
                         }
                     } else {
-                        if ($prevNode instanceof TextNode && !$prevNode instanceof WhitespaceNode) {
+                        if (
+                            $prevNode instanceof TextNode &&
+                            !$prevNode instanceof WhitespaceNode &&
+                            (
+                                $prevNode->getText() !== ',' ||
+                                !($prevNode->parent instanceof ArgumentNode) ||
+                                !$prevNode->parent->isOptional
+                            )
+                        ) {
                             $prevNode->content .= substr($source, $i, $j - $i);
                         } else {
                             $node = new TextNode($nodeLineNumber, substr($source, $i, $j - $i));

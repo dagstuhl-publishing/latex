@@ -120,10 +120,20 @@ class ParseTree
             $options = [];
             $arguments = [];
 
-            foreach ($node->getChild(0)->getChildren() as $child) {
+            foreach ($node->getChildren() as $child) {
                 if ($child instanceof ArgumentNode) {
                     if ($child->isOptional) {
-                        $options[] = $child->getText();
+                        $options[] = '';
+                        for ($i = 1, $n = $child->getChildCount() - 1; $i < $n; $i++) {
+                            $grandChild = $child->getChild($i);
+                            if ($grandChild instanceof TextNode &&
+                                $grandChild->getText() === ',' &&
+                                end($options) !== '') {
+                                $options[] = '';
+                            } else {
+                                $options[count($options) - 1] .= trim($grandChild->toLatex());
+                            }
+                        }
                     } else {
                         $arguments[] = $child->getText();
                     }
