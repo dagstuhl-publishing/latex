@@ -10,7 +10,6 @@ require_once __DIR__ . '/../../vendor/xemlock/php-latex/library/PhpLatex/Utils.p
 require_once __DIR__ . '/../../vendor/xemlock/php-latex/library/PhpLatex/Renderer/Abstract.php';
 require_once __DIR__ . '/../../vendor/xemlock/php-latex/library/PhpLatex/Utils/TreeDebug.php';
 require_once __DIR__ . '/Char.php';
-require_once __DIR__ . '/Lexer.php';
 require_once __DIR__ . '/ParseTree.php';
 require_once __DIR__ . '/ParseTreeNode.php';
 require_once __DIR__ . '/ParseException.php';
