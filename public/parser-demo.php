@@ -10,6 +10,6 @@ $latexFile = new LatexFile('../resources/latex-examples/lipics-authors-v2021.1.3
 
 $parser = new LatexParser();
 $parseTree = $parser->parse($latexFile->getContents());
-$abstractEnvs = $parseTree->getMacros('title');
+$abstractEnvs = $parseTree->getEnvironments('abstract');
 
 var_dump($abstractEnvs);

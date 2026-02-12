@@ -68,7 +68,7 @@ class ParseTree
         return $environments;
     }
 
-    private function collectEnvironments(string $name, ParseTreeNode $node, array $environments): void
+    private function collectEnvironments(string $name, ParseTreeNode $node, array &$environments): void
     {
         if (
             $node instanceof EnvironmentNode &&
@@ -84,12 +84,16 @@ class ParseTree
 
     public function getMacros(string $name): array
     {
+        if (!str_starts_with($name, '\\')) {
+            $name = '\\' . $name;
+        }
+
         $macros = [];
         $this->collectMacros($name, $this->root, $macros);
         return $macros;
     }
 
-    private function collectMacros(string $name, ParseTreeNode $node, array $macros): void
+    private function collectMacros(string $name, ParseTreeNode $node, array &$macros): void
     {
         if (
             $node instanceof CommandNode &&
