@@ -33,6 +33,7 @@ require_once __DIR__ . '/TreeNodes/CommentNode.php';
 require_once __DIR__ . '/TreeNodes/VerbNode.php';
 
 use Dagstuhl\Latex\Parser\TreeNodes\CommandNode;
+use phpDocumentor\Reflection\Types\True_;
 
 function findCommandNode($root, string $str): ?ParseTreeNode
 {
@@ -109,10 +110,11 @@ function generateInput($filenames, $sourceStrings) {
 }
 
 // Define the expected options
-$shortopts  = "hf:qr:mx"; // h (help), f: (file requires value), v (verbose flag)
+$shortopts  = "hf:pqr:mx"; // h (help), f: (file requires value), v (verbose flag)
 $longopts   = [
     "help",      // No value
     "file:",     // Value required
+    "print",
     "quiet",
     "regex",
     "mute",
@@ -166,6 +168,10 @@ foreach (generateInput(array_key_exists('f', $options) ? $options['f'] : [], $no
             echo "\n";
             if ($mine) {
                 echo $root->toTreeString() . "\n";
+
+                if (array_key_exists('p', $options)) {
+                    echo $root->toLatex() . "\n";
+                }
 
                 if (array_key_exists('r', $options)) {
                     echo "---------\n";

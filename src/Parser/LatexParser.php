@@ -520,7 +520,17 @@ class LatexParser
 
         for ($i = $stackIndex + 1; $i < $stackSize; $i++) {
             $reducedNode = $stack[$i];
-            if (!($reducedNode instanceof CommandNode)) {
+            if ($reducedNode instanceof CommandNode) {
+                if ($i < $stackSize - 1 &&
+                    $reducedNode->getChildCount() > 1 &&
+                    $stack[$i + 1] === $reducedNode->getChild(-1)) {
+                    $reducedNode->removeChild(-1);
+
+                    if ($reducedNode->getChild(-1) instanceof WhitespaceNode) {
+                        $children[] = $reducedNode->removeChild(-1);
+                    }
+                }
+            } else {
                 if ($reducedNode->getChildCount() > 0) {
                     array_push($children, ...$reducedNode->getChildren());
                     array_pop($children);
