@@ -144,7 +144,7 @@ class LatexParser
                             }
 
                             if ($k >= 0) {
-                                $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from MathNode closer $commandName");
+                                $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, $buffer, "called from MathNode closer $commandName");
                                 $prevNode = array_pop($stack);
                                 $prevNode->getClosing()->lineNumber = $lineNumber;
                             } else {
@@ -214,7 +214,7 @@ class LatexParser
                         }
                     }
                     if ($k >= 0) {
-                        $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from " . get_class($stackNode) . " closer");
+                        $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, $buffer, "called from " . get_class($stackNode) . " closer");
                         $prevNode = array_pop($stack);
 
                         $commandNode = $prevNode->parent;
@@ -283,7 +283,7 @@ class LatexParser
 
                                 if ($k >= 0) {
                                     $commandNode->parent->removeChild($commandNode);
-                                    $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from \\end\{$envName}\}");
+                                    $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, $buffer,"called from \\end\{$envName}\}");
                                     $envNode = array_pop($stack);
 
                                     // when creating the parent, we used a placeholder $closing node
@@ -334,7 +334,7 @@ class LatexParser
                             }
                         }
 
-                        $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, "called from end of MathNode ($char)");
+                        $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, $buffer, "called from end of MathNode ($char)");
                         $prevNode = array_pop($stack);
                         $prevNode->getClosing()->lineNumber = $lineNumber;
                     } else {
@@ -496,7 +496,7 @@ class LatexParser
         return new ParseTree($rootNode);
     }
 
-    private function reduceNode(array &$stack, int $stackIndex, &$dollarIndices, &$doubleDollarIndices, string $debugInfo = ''): void
+    private function reduceNode(array &$stack, int $stackIndex, &$dollarIndices, &$doubleDollarIndices, &$buffer, string $debugInfo = ''): void
     {
 //        echo "---<reduceNode>------------\n";
 //        echo "reduceNode" . ($debugInfo !== '' ? ", $debugInfo" : '') . "\n";
@@ -532,6 +532,11 @@ class LatexParser
 
         if (!empty($children)) {
             $node->addChildren($children);
+        }
+
+        if (!empty($buffer)) {
+            $node->addChildren($buffer);
+            $buffer = [];
         }
 
 //        echo "---</reducenode>------------\n";
