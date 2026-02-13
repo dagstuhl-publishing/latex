@@ -520,6 +520,14 @@ class LatexParser
 
         for ($i = $stackIndex + 1; $i < $stackSize; $i++) {
             $reducedNode = $stack[$i];
+            if (!($reducedNode instanceof CommandNode ||
+                  $reducedNode->parent === null)) {
+                $reducedNode->parent->removeChild($reducedNode);
+            }
+        }
+
+        for ($i = $stackIndex + 1; $i < $stackSize; $i++) {
+            $reducedNode = $stack[$i];
             if ($reducedNode instanceof CommandNode) {
                 if ($i < $stackSize - 1 &&
                     $reducedNode->getChildCount() > 1 &&
@@ -542,10 +550,6 @@ class LatexParser
                     } elseif ($reducedNode->getOpening()->getText() === '$$') {
                         array_pop($doubleDollarIndices);
                     }
-                }
-
-                if ($reducedNode->parent !== null) {
-                    $reducedNode->parent->removeChild($reducedNode);
                 }
             }
         }
