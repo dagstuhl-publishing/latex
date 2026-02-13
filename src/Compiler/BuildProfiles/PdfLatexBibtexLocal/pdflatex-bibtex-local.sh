@@ -1,16 +1,27 @@
 #!/bin/bash
 
-if [[ $1 == '--version' ]]; then
-    pdflatex --version
-    exit 0
+if [ -z "${PDF_LATEX_BIN}" ]; then
+  PDF_LATEX_BIN="pdflatex"
 fi
 
+if [ -z "${BIBTEX_BIN}" ]; then
+  BIBTEX_BIN="bibtex"
+fi
+
+if [[ $1 == '--version' ]]; then
+    ${PDF_LATEX_BIN} --version
+    exit 0
+fi
 
 WORK_DIR="$(dirname "$1")"
 FILE_NAME="$(basename "$1" .tex)"
 
-LATEX_CMD="pdflatex -interaction=nonstopmode -halt-on-error ${LATEX_OPTIONS} \"${FILE_NAME}\""
-BIBTEX_CMD="bibtex \"${FILE_NAME}\""
+if [[ ${PDF_LATEX_BIN} == 'pdflatex' || -z ${PDF_LATEX_BIN} ]]; then
+    LATEX_CMD="pdflatex -interaction=nonstopmode -halt-on-error ${LATEX_OPTIONS} \"${FILE_NAME}\""
+else
+    LATEX_CMD="${PDF_LATEX_BIN} \"${FILE_NAME}\""
+fi
+BIBTEX_CMD="${BIBTEX_BIN} \"${FILE_NAME}\""
 
 
 function run_latex_pass() {
@@ -41,6 +52,12 @@ function another_run_needed() {
         echo -n "- WARNING: undefined references "
         return 1;
     fi
+
+    if grep -q "Rerun to get outlines right" "${FILE_NAME}.log"; then
+        echo -n "- WARNING: from package rerunfilecheck -> rerun to get outlines right "
+        return 1;
+    fi
+
     return 0;
 }
 
@@ -53,12 +70,12 @@ function print_exit_codes() {
 
 echo "LaTeX build info"
 echo -n "- LaTeX version: "
-pdflatex --version | head -1
+${PDF_LATEX_BIN} --version | head -1
 echo "- \$HOME: ${HOME}"
 echo "- \$PATH: ${PATH}"
 echo "- Work dir: ${WORK_DIR}"
 echo "- LaTeX-Command: ${LATEX_CMD}"
-echo "- BibTeX-Command: ${LATEX_CMD}"
+echo "- BibTeX-Command: ${BIBTEX_CMD}"
 echo
 echo "Starting build"
 echo "- Mode: ${MODE}"

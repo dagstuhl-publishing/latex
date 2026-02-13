@@ -30,6 +30,8 @@ class LatexMacro extends LatexString
     private array $linesToPrepend = [];
     private array $linesToAppend = [];
 
+    public array $_log = [];
+
     private static function parseOptions(string $optionsString): array
     {
         $height = 0;
@@ -137,6 +139,8 @@ class LatexMacro extends LatexString
         $string = substr($string, $offset);
 
         $string = preg_replace('/([^\\\\])\\\\{/', '$1'.self::REPLACEMENT_LEFT_CURLY_BRACKET, $string);
+        $string = preg_replace('/([^\\\\])\\\\{/', '$1'.self::REPLACEMENT_LEFT_CURLY_BRACKET, $string);
+        $string = preg_replace('/([^\\\\])\\\\\}/', '$1'.self::REPLACEMENT_RIGHT_CURLY_BRACKET, $string);
         $string = preg_replace('/([^\\\\])\\\\\}/', '$1'.self::REPLACEMENT_RIGHT_CURLY_BRACKET, $string);
 
         $pos = 0;
@@ -327,6 +331,8 @@ class LatexMacro extends LatexString
             $contents = str_replace($snippetToBeReplaced, $newSnippet, $contents);
         }
 
+        $this->hasValidParseTreeCache = false;
+        $this->hasValidCommentFreeCache = false;
         $this->snippet = $newSnippet;   // TODO: Does this have side effects?
 
         $file->setContents($contents);

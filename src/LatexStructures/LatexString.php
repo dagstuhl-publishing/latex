@@ -2,18 +2,24 @@
 
 namespace Dagstuhl\Latex\LatexStructures;
 
+use Dagstuhl\Latex\Parser\LatexParser;
+use Dagstuhl\Latex\Parser\ParseTree;
 use Dagstuhl\Latex\Scanner\LatexCommandChunk;
 use Dagstuhl\Latex\Scanner\LatexCommentChunk;
 use Dagstuhl\Latex\Scanner\LatexEnvCommandChunk;
 use Dagstuhl\Latex\Scanner\LatexScanner;
 use Dagstuhl\Latex\Utilities\PlaceholderManager;
+use Exception;
 
 class LatexString
 {
     private string $value;
     private string $originalValue;
     protected string $commentFreeCache;
-    protected bool $updateCache = false;
+    protected bool $hasValidCommentFreeCache = false;
+
+    protected ?ParseTree $parseTreeCache = NULL;
+    protected bool $hasValidParseTreeCache = false;
 
     private PlaceholderManager $placeholderManager;
 
@@ -25,6 +31,27 @@ class LatexString
         $this->originalValue = $value ?? '';
         $this->latexFile = $latexFile;
         $this->placeholderManager = new PlaceholderManager();
+    }
+
+    public function getParseTree(): ?ParseTree
+    {
+        if (!$this->hasValidParseTreeCache) {
+            try {
+                $latexParser = new LatexParser();
+                $this->parseTreeCache = $latexParser->parse($this->value);
+            } catch (Exception $e) {
+                $this->parseTreeCache = NULL;
+            }
+            $this->hasValidParseTreeCache = true;
+        }
+
+        if ($this->parseTreeCache !== NULL) {
+            if ($this->parseTreeCache->toLatex() === $this->value) {
+                $this->parseTreeCache = NULL;
+            }
+        }
+
+        return $this->parseTreeCache;
     }
 
     public function saveVerbatimLikePatterns(): void
@@ -119,11 +146,11 @@ class LatexString
 
     public function getValueWithoutComments(bool $prettyPrint = false): string
     {
-        if ($this->updateCache OR empty($this->commentFreeCache)) {
+        if (empty($this->commentFreeCache) OR !$this->hasValidCommentFreeCache) {
             $clonedString = new self($this->value);
             $clonedString->_removeComments($prettyPrint);
             $this->commentFreeCache = $clonedString->getValue(false, false);
-            $this->updateCache = false;
+            $this->hasValidCommentFreeCache = true;
         }
 
         return $this->commentFreeCache;
@@ -155,7 +182,8 @@ class LatexString
     public function setValue($value, $writeToParents = false): bool
     {
         if ($this->value !== $value) {
-            $this->updateCache = true;
+            $this->hasValidCommentFreeCache = false;
+            $this->hasValidParseTreeCache = false;
         }
 
         $this->value = $value;
@@ -185,6 +213,17 @@ class LatexString
      */
     public function getEnvironments(string $name): array
     {
+        $parseTree = $this->getParseTree();
+
+        if ($parseTree !== NULL) {
+            $envs = $parseTree->getEnvironments($name);
+            foreach($envs as $env) {
+                $env->_log['source'] = 'parser';
+                $env->setLatexFile($this->latexFile);
+            }
+            return $envs;
+        }
+
         $contents = $this->getValue(true);
 
         return LatexEnvironment::_getEnvironments($name, $contents, $this->latexFile);
@@ -204,13 +243,19 @@ class LatexString
      */
     public function getMacros(string $name): array
     {
+        $parseTree = $this->getParseTree();
+        if ($parseTree !== NULL) {
+            $macros = $parseTree->getMacros($name);
+            foreach($macros as $macro) {
+                $macro->_log['source'] = 'parser';
+                $macro->setLatexFile($this->latexFile);
+            }
+            return $macros;
+        }
+
         $contents = $this->getValue(true, false);
 
-        $latexFile = $this instanceof LatexFile
-            ? $this
-            : NULL;
-
-        return LatexMacro::_getMacros($name, $contents, $latexFile);
+        return LatexMacro::_getMacros($name, $contents, $this->latexFile);
     }
 
     public function getMacro(string $name): ?LatexMacro

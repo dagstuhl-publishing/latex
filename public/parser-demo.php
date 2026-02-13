@@ -8,8 +8,7 @@ use Dagstuhl\Latex\Parser\LatexParser;
 
 $latexFile = new LatexFile('../resources/latex-examples/lipics-authors-v2021.1.3/lipics-v2021-sample-article.tex');
 
-$parser = new LatexParser();
-$parseTree = $parser->parse($latexFile->getContents());
-$authors = $parseTree->getMacros('author');
+$abstracts = $latexFile->getEnvironments('abstract');
+$authors = $latexFile->getMacros('author');
 
-var_dump($authors[0]);
+var_dump(count($authors));
