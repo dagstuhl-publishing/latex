@@ -121,9 +121,9 @@ class LatexParser
             $catCode = $catCodes[ord($char)];
             $node = null;
 
-//            echo "STACK (" . count($stack) . ") [" . implode(', ', $stack) . "]\n";
-//            echo "CHAR: " . str_replace("\n", '\n', $char) . " CAT_CODE: $catCode\n";
-//            echo "Line number: $lineNumber Accepting arguments: " . ($acceptingArguments ? "true" : "false" ) . "\n";
+//            echo "stack (" . count($stack) . ") [" . implode(', ', $stack) . "]\n";
+//            echo "char: " . str_replace("\n", '\n', $char) . " catCode: $catCode\n";
+//            echo "line number: $lineNumber, accepting arguments: " . ($acceptingArguments ? "true" : "false" ) . "\n";
 
             switch ($catCode) {
                 case self::CAT_CODE_ESCAPE:
@@ -357,20 +357,28 @@ class LatexParser
                     break;
 
                 case self::CAT_CODE_OTHER:
+                    $stackIndex = count($stack) - 1;
+                    $nonCommandEndOfStack = end($stack);
+                    if ($nonCommandEndOfStack instanceof CommandNode) {
+                        $stackIndex--;
+                        $nonCommandEndOfStack = $stack[$stackIndex];
+                    }
+
                     if ($char === '[' && $acceptingArguments) {
                         $node = new ArgumentNode($lineNumber, true);
                         break;
                     } else if (
                         $char === ']' &&
-                        end($stack) instanceof ArgumentNode &&
-                        end($stack)->isOptional
+                        $nonCommandEndOfStack instanceof ArgumentNode &&
+                        $nonCommandEndOfStack->isOptional
                     ) {
-                        $prevNode = array_pop($stack);
+                        $this->reduceNode($stack, $stackIndex, $dollarIndices, $doubleDollarIndices, $buffer);
+                        array_pop($stack);
                         break;
                     } else if (
                         $char === ',' &&
-                        end($stack) instanceof ArgumentNode &&
-                        end($stack)->isOptional
+                        $nonCommandEndOfStack instanceof ArgumentNode &&
+                        $nonCommandEndOfStack->isOptional
                     ) {
                         $node = new TextNode($lineNumber, $char);
                         break;
