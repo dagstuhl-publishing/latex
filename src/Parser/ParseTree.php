@@ -147,8 +147,6 @@ class ParseTree
                 'snippet' => $node->toLatex(),
                 'latexFile' => NULL
             ]);
-
-            $macros[] = $node->toLatex();
         }
 
         foreach ($node->getChildren() as $child) {

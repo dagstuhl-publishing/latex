@@ -8,6 +8,8 @@ class LatexEnvironment extends LatexString
     private string $header;
     private string $options;
 
+    public array $_log = [];
+
     private static function readContent(string $string, int $offset, string $name): string
     {
         $contents = '';

@@ -30,6 +30,8 @@ class LatexMacro extends LatexString
     private array $linesToPrepend = [];
     private array $linesToAppend = [];
 
+    public array $_log = [];
+
     private static function parseOptions(string $optionsString): array
     {
         $height = 0;
@@ -327,6 +329,8 @@ class LatexMacro extends LatexString
             $contents = str_replace($snippetToBeReplaced, $newSnippet, $contents);
         }
 
+        $this->hasValidParseTreeCache = false;
+        $this->hasValidCommentFreeCache = false;
         $this->snippet = $newSnippet;   // TODO: Does this have side effects?
 
         $file->setContents($contents);
