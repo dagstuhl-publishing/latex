@@ -4,13 +4,13 @@ namespace Dagstuhl\Latex\Parser;
 
 // Manual loading of the required files
 require_once __DIR__ . '/Char.php';
-require_once __DIR__ . '/Lexer.php';
 require_once __DIR__ . '/ParseTreeNode.php';
 require_once __DIR__ . '/ParseException.php';
 require_once __DIR__ . '/CatcodeState.php';
 require_once __DIR__ . '/LatexParser.php';
 require_once __DIR__ . '/TokenType.php';
 require_once __DIR__ . '/Token.php';
+require_once __DIR__ . '/ParseTree.php';
 require_once __DIR__ . '/TreeNodes/EnvelopeNode.php';
 require_once __DIR__ . '/TreeNodes/RootNode.php';
 require_once __DIR__ . '/TreeNodes/TextNode.php';
@@ -39,9 +39,9 @@ use Dagstuhl\Latex\Parser\TreeNodes\VerbNode;
 
 class FuzzTester
 {
-    private array $mathEnvs = ['equation', 'align*', 'gather', 'multline'];
-    private array $textEnvs = ['itemize', 'center', 'quote'];
-    private int $lineNumber = 1;
+    private array $textEnvs = [ 'center', 'description', 'quote' ];
+    private array $mathEnvs = [ 'displaymath', 'align', 'equation' ];
+    private int $lineNumber;
 
     public function run(int $iterations): void
     {
@@ -68,7 +68,7 @@ class FuzzTester
             try
             {
                 $parsedTree = $parser->parse($latex);
-                $this->compareTrees($originalTree, $parsedTree);
+                $this->compareTrees($originalTree, $parsedTree->root);
                 printf("%-12d %-10d %-8d PASSED\n", $i, $stats['nodes'], $stats['depth']);
             }
             catch (\Exception $e)
@@ -77,7 +77,12 @@ class FuzzTester
                 echo "Reproduce: php fuzz_tests.php -$seed\n";
                 echo "Error: " . $e->getMessage() . "\n";
                 echo "--- Tree Comparison (Original vs Parsed) ---\n";
-                echo $this->getTreeComparisonString($originalTree, $parsedTree);
+                if ($parsedTree === null) {
+                    echo "Parsing failed. Original tree was:\n";
+                    echo $originalTree->toTreeString() . "\n";
+                } else {
+                    echo $this->getTreeComparisonString($originalTree, $parsedTree->root);
+                }
                 echo "\n--- Generated LaTeX ---\n$latex\n-----------------------\n";
                 exit(1);
             }
@@ -86,20 +91,47 @@ class FuzzTester
         }
     }
 
+    private function getTreeStringWithLines(ParseTreeNode $node): string
+    {
+        $ret = "$node";
+
+        if ($node->getChildCount() > 0) {
+            for ($i = 0, $n = $node->getChildCount(); $i < $n; $i++) {
+                $childLines = explode("\n", $this->getTreeStringWithLines($node->getChild($i)));
+
+                if ($i === $n - 1) {
+                    $ret .= "\n└┄" . $node->getChild(-1);
+                } else {
+                    $ret .= "\n├┄" . $childLines[0];
+                }
+
+                for ($j = 1, $m = count($childLines); $j < $m; $j++) {
+                    if ($i === $n - 1) {
+                        $ret .= "\n  " . $childLines[$j];
+                    } else {
+                        $ret .= "\n┊ " . $childLines[$j];
+                    }
+                }
+            }
+        }
+
+        return $ret;
+    }
+
     private function getTreeComparisonString(ParseTreeNode $original, ?ParseTreeNode $parsed): string
     {
         if ($parsed === null)
         {
-            return $original->toTreeString();
+            return $this->getTreeStringWithLines($original);
         }
 
-        $originalLines = explode("\n", $original->toTreeString());
-        $parsedLines = explode("\n", $parsed->toTreeString());
+        $originalLines = explode("\n", $this->getTreeStringWithLines($original));
+        $parsedLines = explode("\n", $this->getTreeStringWithLines($parsed));
 
         $columnWidth = 0;
         foreach ($originalLines as $originalLine)
         {
-            $columnWidth = max($columnWidth, strlen($originalLine));
+            $columnWidth = max($columnWidth, mb_strlen($originalLine));
         }
 
         $str = '';
@@ -118,7 +150,7 @@ class FuzzTester
             }
 
             if ($i < count($originalLines)) {
-                $str .= $originalLines[$i] . str_repeat(" ", $columnWidth - strlen($originalLines[$i]));
+                $str .= $originalLines[$i] . str_repeat(" ", $columnWidth - mb_strlen($originalLines[$i]));
             } else {
                 $str .= str_repeat(" ", $columnWidth);
             }
@@ -158,7 +190,6 @@ class FuzzTester
             'verb'        => new VerbNode($this->lineNumber, "verb", "|"),
             default       => new TextNode($this->lineNumber, "fallback")
         };
-
 
         if (!$node instanceof EnvelopeNode && $node->getChildCount() === 1) {
             $child = $node->getChild(0);
@@ -218,12 +249,12 @@ class FuzzTester
 
     private function fillContainer(ParseTreeNode $container, int $depth, array $allowedTypes): void
     {
-        if ($depth < 0) {
+        if ($depth <= 0) {
             return;
         }
 
         $numChildren = mt_rand(1, 4);
-        for ($i = 0; $i < $numChildren; $i++) {
+        for ($n = $container->getChildCount(); $container->getChildCount() < $n + $numChildren;) {
             $child = $this->generateRandomNode($allowedTypes, $depth);
 
             // This handles merging, swallowing, and the Command+Group boundary rule
@@ -232,7 +263,6 @@ class FuzzTester
             // Comments in LaTeX effectively swallow the rest of the line,
             // so we force a newline whitespace to follow it for round-trip sanity.
             if ($child instanceof CommentNode) {
-                $this->addChildSafely($container, new WhitespaceNode($this->lineNumber, "\n"));
                 $this->lineNumber++;
             }
         }
@@ -240,21 +270,25 @@ class FuzzTester
 
     private function addChildSafely(ParseTreeNode $parent, ParseTreeNode $child): void
     {
+        $offset = $parent instanceof EnvelopeNode ? 1 : 0;
+
         $lastContentNode = null;
-        $followingCommandNode = false;
-        for ($i = $parent->getChildCount() - 1; $i >= 0; --$i) {
-            $child = $parent->getChild($i);
-            if (!($child instanceof CommentNode || $child instanceof WhitespaceNode)) {
-                $lastContentNode = $child;
+        for ($i = $parent->getChildCount() - 1 - $offset; $i >= $offset; --$i) {
+            $existingChild = $parent->getChild($i);
+            if (!($existingChild instanceof CommentNode || $existingChild instanceof WhitespaceNode)) {
+                $lastContentNode = $existingChild;
                 break;
             }
         }
 
-        $last = $parent->getChildCount() > 0 ? $parent->getChild(-1) : null;
+        $last = $parent->getChildCount() > $offset * 2 ? $parent->getChild(-1 - $offset) : null;
 
         // 1. BOUNDARY RULE: Prevent GroupNode from accidentally becoming a Command Argument
         if ($child instanceof GroupNode) {
-            if ($lastContentNode instanceof CommandNode) {
+            if (
+                $lastContentNode instanceof CommandNode ||
+                $lastContentNode instanceof ArgumentNode
+            ) {
                 return;
             }
 
@@ -270,13 +304,20 @@ class FuzzTester
             }
         }
 
+        if ($last instanceof CommandNode &&
+            $last->getChildCount() === 1 &&
+            $child instanceof TextNode) {
+            return;
+        }
+
         if ($last instanceof WhitespaceNode) {
             if ($child instanceof WhitespaceNode) {
                 $last->content .= $child->content;
                 return;
             } elseif ($child instanceof TextNode) {
-                $parent->removeChild(-1);
+                $parent->removeChild(-1 - $offset);
                 $child->content = $last->content . $child->content;
+                return;
             }
         } elseif ($last instanceof TextNode) {
             if ($child instanceof TextNode) {
@@ -301,17 +342,29 @@ class FuzzTester
     {
         $node = new CommandNode($this->lineNumber, "\\" . ['section', 'textbf', 'textit'][mt_rand(0, 2)]);
 
-        $prefixCount = mt_rand(0, 2);
-        for ($i = 0; $i < $prefixCount; $i++)
-        {
-            $roll = mt_rand(0, 1);
-            $prefix = ($roll === 0)
-                ? new WhitespaceNode($this->lineNumber, " ")
-                : $this->createArgumentNode($depth, true);
-            $this->addChildSafely($node, $prefix);
+        if ($depth > 0) {
+            $optionalArgCount = mt_rand(0, 1);
+
+            for ($i = 0; $i < $optionalArgCount; $i++) {
+                $roll = mt_rand(0, 10);
+                if ($roll === 0) {
+                    $node->addChild(new WhitespaceNode($this->lineNumber, " "));
+                }
+
+                $node->addChild($this->createArgumentNode($depth - 1, true));
+            }
+
+            $mandatoryArgCount = mt_rand(0, 2);
+            for ($i = 0; $i < $mandatoryArgCount; $i++) {
+                $roll = mt_rand(0, 10);
+                if ($roll === 0) {
+                    $node->addChild(new WhitespaceNode($this->lineNumber, " "));
+                }
+
+                $node->addChild($this->createArgumentNode($depth - 1, false));
+            }
         }
 
-        $this->addChildSafely($node, $this->createArgumentNode($depth, false));
         return $node;
     }
 
@@ -326,8 +379,8 @@ class FuzzTester
         $end->addChild($this->createStaticArg($name));
 
         $node = $isMath
-            ? new MathEnvironmentNode($this->lineNumber, $name, $begin, $end)
-            : new EnvironmentNode($this->lineNumber, $name, $begin, $end);
+            ? new MathEnvironmentNode($name, $begin, $end)
+            : new EnvironmentNode($name, $begin, $end);
 
         $types = $isMath ? ['text', 'whitespace', 'command'] : ['text', 'whitespace', 'command', 'group', 'environment'];
         if ($depth > 0) $this->fillContainer($node, $depth - 1, $types);
@@ -336,8 +389,22 @@ class FuzzTester
 
     private function createMathNode(int $depth): MathNode
     {
-        $node = new MathNode($this->lineNumber, new TextNode($this->lineNumber, '$'), new TextNode($this->lineNumber, '$'));
+        $delimiterPairs = [['$$', '$$'], ['\\[', '\\]'], ['\\(', '\\)']];
+        if ($depth > 0) {
+            $delimiterPairs[] = ['$', '$'];
+        }
+
+        $delimiters = $delimiterPairs[array_rand($delimiterPairs)];
+
+        $lineNumber = $this->lineNumber;
+
+        $opener = new CommandNode($lineNumber, $delimiters[0]);
+        $closer = new CommandNode($lineNumber, $delimiters[1]);
+
+        $node = new MathNode($this->lineNumber, $opener, $closer);
+
         if ($depth > 0) $this->fillContainer($node, $depth - 1, ['text', 'whitespace', 'command']);
+
         return $node;
     }
 
@@ -399,3 +466,4 @@ class FuzzTester
 // CLI Execution
 $count = isset($argv[1]) ? (int)$argv[1] : 1;
 (new FuzzTester())->run($count);
+

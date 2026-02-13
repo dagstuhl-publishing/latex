@@ -115,15 +115,17 @@ class LatexParser
 
         $prevNode = null;
 
+//        echo "\n";
+
         $i = 0;
         for ($n = strlen($source); $i < $n; $i++) {
             $char = $source[$i];
             $catCode = $catCodes[ord($char)];
             $node = null;
 
-//            echo "stack (" . count($stack) . ") [" . implode(', ', $stack) . "]\n";
-//            echo "char: " . str_replace("\n", '\n', $char) . " catCode: $catCode\n";
-//            echo "line number: $lineNumber, accepting arguments: " . ($acceptingArguments ? "true" : "false" ) . "\n";
+//            echo "⎡stack (" . count($stack) . ") [" . implode(', ', $stack) . "]\n";
+//            echo "⎢char: \e[47m\e[30m" . str_replace("\n", '\n', $char) . "\e[0m catCode: $catCode\n";
+//            echo "⎣line number: $lineNumber, accepting arguments: " . ($acceptingArguments ? "true" : "false" ) . "\n";
 
             switch ($catCode) {
                 case self::CAT_CODE_ESCAPE:
@@ -373,7 +375,7 @@ class LatexParser
                         $nonCommandEndOfStack->isOptional
                     ) {
                         $this->reduceNode($stack, $stackIndex, $dollarIndices, $doubleDollarIndices, $buffer);
-                        array_pop($stack);
+                        $prevNode = array_pop($stack);
                         break;
                     } else if (
                         $char === ',' &&
