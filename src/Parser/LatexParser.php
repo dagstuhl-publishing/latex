@@ -543,6 +543,10 @@ class LatexParser
                         array_pop($doubleDollarIndices);
                     }
                 }
+
+                if ($reducedNode->parent !== null) {
+                    $reducedNode->parent->removeChild($reducedNode);
+                }
             }
         }
 
