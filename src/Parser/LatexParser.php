@@ -19,7 +19,7 @@ use PhpParser\Node\Arg;
 
 class LatexParser
 {
-    private const mathEnvironments = [
+    private const MATH_ENVIRONMENTS = [
         'math',
         'displaymath',
         'equation', 'equation*',
@@ -34,7 +34,7 @@ class LatexParser
         'rcases', 'rcases*'
     ];
 
-    private const rawEnvironments = [
+    private const RAW_ENVIRONMENTS = [
         'alltt', 'abscode', 'allinlustre', 'allinlustre-figure', 'AnerisPLsmall', 'ainflisting',
         'bull', 'BVerbatim',
         'chorlisting', 'chorallisting', 'code', 'codeblock', 'codeblockcss', 'codejava', 'coq', 'coqlisting', 'clang-figure', 'clang',
@@ -148,6 +148,7 @@ class LatexParser
                             if ($k >= 0) {
                                 $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, $buffer, "called from MathNode closer $commandName");
                                 $prevNode = array_pop($stack);
+                                /** @var EnvelopeNode $prevNode */
                                 $prevNode->getClosing()->lineNumber = $lineNumber;
                             } else {
                                 $node = new CommandNode($lineNumber, $commandName);
@@ -229,7 +230,7 @@ class LatexParser
                                 $parent = $commandNode->parent;
                                 $envName = $prevNode->getText();
 
-                                if (in_array($envName, self::rawEnvironments)) {
+                                if (in_array($envName, self::RAW_ENVIRONMENTS)) {
                                     $contentLineNumber = $lineNumber;
                                     $closingString = "\\end{{$envName}}";
 
@@ -260,7 +261,7 @@ class LatexParser
                                     $closingArg->addChild($closingArgText);
                                     $closing->addChild($closingArg);
 
-                                    if (in_array($envName, self::mathEnvironments)) {
+                                    if (in_array($envName, self::MATH_ENVIRONMENTS)) {
                                         $envNode = new MathEnvironmentNode($envName, $commandNode, $closing);
                                     } else {
                                         $envNode = new EnvironmentNode($envName, $commandNode, $closing);
@@ -291,6 +292,7 @@ class LatexParser
                                     // when creating the parent, we used a placeholder $closing node
                                     // which we now have to update to correct for its line number and
                                     // possibly whitespace or comment nodes
+                                    /** @var EnvelopeNode $envNode */
                                     $closing = $envNode->getClosing();
                                     $closing->lineNumber = $commandNode->lineNumber;
                                     $closing->getChild(0)->lineNumber = $prevNode->lineNumber;
@@ -338,6 +340,7 @@ class LatexParser
 
                         $this->reduceNode($stack, $k, $dollarIndices, $doubleDollarIndices, $buffer, "called from end of MathNode ($char)");
                         $prevNode = array_pop($stack);
+                        /** @var EnvelopeNode $prevNode */
                         $prevNode->getClosing()->lineNumber = $lineNumber;
                     } else {
                         $mathIndices[] = $i;

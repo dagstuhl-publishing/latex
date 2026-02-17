@@ -8,11 +8,17 @@ use Dagstuhl\Latex\Scanner\LatexCommandChunk;
 use Dagstuhl\Latex\Scanner\LatexCommentChunk;
 use Dagstuhl\Latex\Scanner\LatexEnvCommandChunk;
 use Dagstuhl\Latex\Scanner\LatexScanner;
+use Dagstuhl\Latex\Strings\StringHelper;
+use Dagstuhl\Latex\Utilities\Filesystem;
 use Dagstuhl\Latex\Utilities\PlaceholderManager;
 use Exception;
 
 class LatexString
 {
+    public static bool $useParser = true;
+    public static bool $writeDiff = false;
+
+
     private string $value;
     private string $originalValue;
     protected string $commentFreeCache;
@@ -41,13 +47,22 @@ class LatexString
                 $this->parseTreeCache = $latexParser->parse($this->value);
             } catch (Exception $e) {
                 $this->parseTreeCache = NULL;
+                // echo '-> EXCEPTION: '.$e->getMessage();
             }
             $this->hasValidParseTreeCache = true;
         }
 
         if ($this->parseTreeCache !== NULL) {
-            if ($this->parseTreeCache->toLatex() === $this->value) {
+            $rebuiltLatex = $this->parseTreeCache->toLatex();
+            if ($rebuiltLatex !== StringHelper::removeCarriageReturns($this->value)) {
                 $this->parseTreeCache = NULL;
+                if (static::$writeDiff) {
+                    Filesystem::put($this->latexFile->getPath('diff.tex'), $rebuiltLatex);
+                }
+                // echo '-> DIFF';
+            }
+            elseif (static::$writeDiff) {
+                Filesystem::delete($this->latexFile->getPath('diff.tex'));
             }
         }
 
@@ -213,15 +228,17 @@ class LatexString
      */
     public function getEnvironments(string $name): array
     {
-        $parseTree = $this->getParseTree();
+        if (static::$useParser) {
+            $parseTree = $this->getParseTree();
 
-        if ($parseTree !== NULL) {
-            $envs = $parseTree->getEnvironments($name);
-            foreach($envs as $env) {
-                $env->_log['source'] = 'parser';
-                $env->setLatexFile($this->latexFile);
+            if ($parseTree !== NULL) {
+                $envs = $parseTree->getEnvironments($name);
+                foreach ($envs as $env) {
+                    $env->_log['source'] = 'parser';
+                    $env->setLatexFile($this->latexFile);
+                }
+                return $envs;
             }
-            return $envs;
         }
 
         $contents = $this->getValue(true);
@@ -243,14 +260,16 @@ class LatexString
      */
     public function getMacros(string $name): array
     {
-        $parseTree = $this->getParseTree();
-        if ($parseTree !== NULL) {
-            $macros = $parseTree->getMacros($name);
-            foreach($macros as $macro) {
-                $macro->_log['source'] = 'parser';
-                $macro->setLatexFile($this->latexFile);
+        if (static::$useParser) {
+            $parseTree = $this->getParseTree();
+            if ($parseTree !== NULL) {
+                $macros = $parseTree->getMacros($name);
+                foreach ($macros as $macro) {
+                    $macro->_log['source'] = 'parser';
+                    $macro->setLatexFile($this->latexFile);
+                }
+                return $macros;
             }
-            return $macros;
         }
 
         $contents = $this->getValue(true, false);
