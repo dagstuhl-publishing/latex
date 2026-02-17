@@ -3,27 +3,7 @@
 namespace Dagstuhl\Latex\Parser;
 
 // Manual loading of the required files
-require_once __DIR__ . '/Char.php';
-require_once __DIR__ . '/Lexer.php';
-require_once __DIR__ . '/ParseTreeNode.php';
-require_once __DIR__ . '/ParseTree.php';
-require_once __DIR__ . '/ParseException.php';
-require_once __DIR__ . '/CatcodeState.php';
-require_once __DIR__ . '/LatexParser.php';
-require_once __DIR__ . '/TokenType.php';
-require_once __DIR__ . '/Token.php';
-require_once __DIR__ . '/TreeNodes/EnvelopeNode.php';
-require_once __DIR__ . '/TreeNodes/RootNode.php';
-require_once __DIR__ . '/TreeNodes/TextNode.php';
-require_once __DIR__ . '/TreeNodes/WhitespaceNode.php';
-require_once __DIR__ . '/TreeNodes/MathNode.php';
-require_once __DIR__ . '/TreeNodes/EnvironmentNode.php';
-require_once __DIR__ . '/TreeNodes/MathEnvironmentNode.php';
-require_once __DIR__ . '/TreeNodes/CommandNode.php';
-require_once __DIR__ . '/TreeNodes/ArgumentNode.php';
-require_once __DIR__ . '/TreeNodes/GroupNode.php';
-require_once __DIR__ . '/TreeNodes/CommentNode.php';
-require_once __DIR__ . '/TreeNodes/VerbNode.php';
+require __DIR__ . '/../vendor/autoload.php';
 
 use Dagstuhl\Latex\Parser\TreeNodes\TextNode;
 use Dagstuhl\Latex\Parser\TreeNodes\CommandNode;
