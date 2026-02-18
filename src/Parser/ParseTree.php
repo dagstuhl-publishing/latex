@@ -86,11 +86,15 @@ class ParseTree
                 }
             }
 
+            $beginNodeLatex = $node->getChild(0)->toLatex();
+            $endNodeLatex = $node->getChild($node->getChildCount() - 1)->toLatex();
+            $contents = substr($node->toLatex(), strlen($beginNodeLatex), -strlen($endNodeLatex));
+
             $environments[] = new LatexEnvironment([
                 'name' => $name,
-                'header' => $node->getChild(0)->toLatex(),
+                'header' => $beginNodeLatex,
                 'options' => $options,
-                'contents' => $node->toLatex(),
+                'contents' => $contents,
                 'latexFile' => NULL
             ]);
         }
