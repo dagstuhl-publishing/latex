@@ -135,7 +135,7 @@ class ParseTree
                             }
                         }
                     } else {
-                        $arguments[] = $child->toLatex();
+                        $arguments[] = preg_replace('/^\{(.*)}$/', '$1', $child->toLatex());
                     }
                 }
             }
