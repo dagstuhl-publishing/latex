@@ -135,7 +135,7 @@ class ParseTree
                             }
                         }
                     } else {
-                        $arguments[] = $child->getText();
+                        $arguments[] = $child->toLatex();
                     }
                 }
             }
