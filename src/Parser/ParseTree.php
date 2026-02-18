@@ -141,7 +141,7 @@ class ParseTree
             }
 
             $macros[] = new LatexMacro([
-                'name' => $name,
+                'name' => preg_replace('/^\\\\/', '', $name),
                 'options' => $options,
                 'arguments' => $arguments,
                 'snippet' => $node->toLatex(),
