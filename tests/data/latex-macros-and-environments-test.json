@@ -72,9 +72,9 @@
         ],
         [
             "linktext={opt. text shown instead of the URL}",
-            "\ncite=DBLP:books\/mk\/GrayR93",
-            "\nsubcategory={Description, Subcategory}",
-            "\nswhid={Software Heritage Identifier}"
+            "cite=DBLP:books\/mk\/GrayR93",
+            "subcategory={Description, Subcategory}",
+            "swhid={Software Heritage Identifier}"
         ]
     ],
     [
@@ -87,9 +87,9 @@
         ],
         [
             "linktext={opt. text shown instead of the URL}",
-            "\ncite=DBLP:books\/mk\/GrayR93",
-            "\nsubcategory={Description, Subcategory}",
-            "\nswhid={Software Heritage Identifier}"
+            "cite=DBLP:books\/mk\/GrayR93",
+            "subcategory={Description, Subcategory}",
+            "swhid={Software Heritage Identifier}"
         ]
     ],
     [
@@ -101,8 +101,8 @@
             "URL to related version"
         ],
         [
-            "linktext = {With additional commas, and braces \\\"{u}}",
-            "\ncite={test}",
+            "linktext ={With additional commas, and braces \\\"{u}}",
+            "cite={test}",
             "caption=bla",
             "target={brain,,}"
         ]

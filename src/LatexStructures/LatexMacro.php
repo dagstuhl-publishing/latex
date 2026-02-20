@@ -65,7 +65,7 @@ class LatexMacro extends LatexString
             $option = rtrim($option, ' ,');
 
             if ($option != '') {
-                $options[] = $option;
+                $options[] = trim($option);
             }
         }
 
