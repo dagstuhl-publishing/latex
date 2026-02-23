@@ -264,6 +264,8 @@ class LatexString
             $parseTree = $this->getParseTree();
             if ($parseTree !== NULL) {
                 $macros = $parseTree->getMacros($name);
+                // filter to reproduce former behavior (i.e., macro has per definition at least one argument)
+                $macros = array_filter($macros, fn (LatexMacro $m) => count($m->getArguments()) > 0);
                 foreach ($macros as $macro) {
                     $macro->_log['source'] = 'parser';
                     $macro->setLatexFile($this->latexFile);
