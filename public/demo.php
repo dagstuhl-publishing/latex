@@ -5,6 +5,24 @@ require __DIR__ . '/../vendor/autoload.php';
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 
 
+\Dagstuhl\Latex\LatexStructures\LatexString::$useParser = true;
+
+$latexFile = new LatexFile('../resources/latex-examples/latex-sample-files/latex-macros-and-environments-test.tex');
+
+$macros = $latexFile->getMacros('section');
+
+foreach($macros as $macro) {
+    var_dump($macro->getSnippet(), $macro->_log);
+}
+
+$macros = $latexFile->getMacros('dummyMacro');
+
+foreach($macros as $macro) {
+    var_dump($macro->getSnippet(), $macro->_log);
+}
+
+exit();
+
 $latexFile = new LatexFile('../resources/latex-examples/lipics-authors-v2021.1.3/lipics-v2021-sample-article.tex');
 
 // read the title
