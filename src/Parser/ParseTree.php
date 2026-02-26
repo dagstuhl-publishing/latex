@@ -144,8 +144,27 @@ class ParseTree
                 }
             }
 
+            $plainName = preg_replace('/^\\\\/', '', $name);
+
+            // "repair" structure of the ParseTree if non-optional argument count is known to be 1
+            // TODO: This should be done during initial ParseTree generation.
+            if (in_array($plainName, LatexMacro::MACROS_1_ARG) && count($arguments) > 1) {
+                $arguments = [ $arguments[0] ];
+
+                $nonOptIndex = 0;
+                foreach($node->getChildren() as $child) {
+                    if ($child instanceof ArgumentNode && !$child->isOptional) {
+                        $nonOptIndex++;
+                    }
+                    if ($nonOptIndex > 1) {
+                        // TODO: change node type
+                        $node->parent->spliceChildren($node->parent->indexOf($node) + 1, 0, $child);
+                    }
+                }
+            }
+
             $macros[] = new LatexMacro([
-                'name' => preg_replace('/^\\\\/', '', $name),
+                'name' => $plainName,
                 'options' => $options,
                 'arguments' => $arguments,
                 'snippet' => $node->toLatex(),
