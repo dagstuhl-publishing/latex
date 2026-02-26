@@ -1052,7 +1052,8 @@ class BibEntry
         // revise month
         if ($this->hasField('month') AND (($fields !== NULL AND in_array('month', $fields)) OR $fields === NULL)) {
 
-            $month = strtolower($this->getField('month'));
+            $oldMonth = $this->getField('month');
+            $month = strtolower($oldMonth);
 
             if (StringHelper::endsWith( $month, ',') OR StringHelper::endsWith($month,'.')) {
                 $month = substr($month,0, strlen($month) - 1);
@@ -1077,9 +1078,11 @@ class BibEntry
                     $month = preg_replace('/(\b)' . $short . '(\b)/', '$1' . $expanded . '$2', $month);
                 }
 
-                $msg = 'CAUTION: Check content of month {'. $month .'} for entry ' .$this->key;
-                $this->setField('month', $month);
-                $this->writeLog(self::LOG_CHANGES, $msg, self::LOG_ALERT);
+                if ($month !== $oldMonth) {
+                    $msg = 'CAUTION: Check content of month {' . $month . '} for entry ' . $this->key;
+                    $this->setField('month', $month);
+                    $this->writeLog(self::LOG_CHANGES, $msg, self::LOG_ALERT);
+                }
             }
         }
 
