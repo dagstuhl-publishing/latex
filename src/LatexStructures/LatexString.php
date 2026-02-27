@@ -260,7 +260,7 @@ class LatexString
      */
     public function getMacros(string $name): array
     {
-        if (static::$useParser && !strpos($name, '*')) {
+        if (static::$useParser) {
             $parseTree = $this->getParseTree();
             if ($parseTree !== NULL) {
                 $macros = $parseTree->getMacros($name);

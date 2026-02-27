@@ -90,6 +90,7 @@ class LatexParser
         $catCodes[36] = self::CAT_CODE_MATH_SHIFT;
         $catCodes[37] = self::CAT_CODE_COMMENT_CHAR;
         //$catCodes[38] = self::CAT_CODE_ALIGNMENT_TAB;
+        $catCodes[42] = self::CAT_CODE_LETTER; // to allow commands like \subparagraph*
         $catCodes[92] = self::CAT_CODE_ESCAPE;
         //$catCodes[94] = self::CAT_CODE_SUPERSCRIPT;
         //$catCodes[95] = self::CAT_CODE_SUBSCRIPT;
