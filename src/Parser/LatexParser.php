@@ -59,9 +59,17 @@ class LatexParser
 
     private const MACROS_BY_ARGUMENT_COUNT = [
         // macros that do not take an argument
-        ['cup'],
+        [ 'cup' ],
         // macros with a single argument
-        ['section']
+        [
+            'textbf', 'bibitem',
+            'section', 'section*',
+            'subsection', 'subsection*',
+            'subsubsection', 'subsubsection*',
+            'paragraph', 'paragraph*',
+            'subparagraph', 'subparagraph*',
+            'dutchPrefix', 'noopsort'
+        ]
     ];
 
     const CAT_CODE_ESCAPE = 0;
