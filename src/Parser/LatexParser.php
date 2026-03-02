@@ -53,21 +53,12 @@ class LatexParser
         'verbatim', 'VerbatimFigure'
     ];
 
-    private readonly array $macroArgumentCounts;
-
+    private const MACRO_ARGUMENT_COUNTS = [];
     private const MACROS_BY_ARGUMENT_COUNT = [
         // macros that do not take an argument
-        [ 'cup' ],
+        ['cup'],
         // macros with a single argument
-        [
-            'textbf', 'bibitem',
-            'section', 'section*',
-            'subsection', 'subsection*',
-            'subsubsection', 'subsubsection*',
-            'paragraph', 'paragraph*',
-            'subparagraph', 'subparagraph*',
-            'dutchPrefix', 'noopsort'
-        ]
+        ['section']
     ];
 
     const CAT_CODE_ESCAPE = 0;
@@ -89,13 +80,11 @@ class LatexParser
 
     public function __construct()
     {
-        $argCount = [];
         for ($i = 0; $i < count(self::MACROS_BY_ARGUMENT_COUNT); $i++) {
             foreach (self::MACROS_BY_ARGUMENT_COUNT[$i] as $macroName) {
-                $argCount['\\'.$macroName] = $i;
+                self::MACRO_ARGUMENT_COUNTS[$macroName] = $i;
             }
         }
-        $this->macroArgumentCounts = $argCount;
     }
 
     /**
@@ -118,7 +107,6 @@ class LatexParser
         $catCodes[36] = self::CAT_CODE_MATH_SHIFT;
         $catCodes[37] = self::CAT_CODE_COMMENT_CHAR;
         //$catCodes[38] = self::CAT_CODE_ALIGNMENT_TAB;
-        $catCodes[42] = self::CAT_CODE_LETTER; // to allow commands like \subparagraph*
         $catCodes[92] = self::CAT_CODE_ESCAPE;
         //$catCodes[94] = self::CAT_CODE_SUPERSCRIPT;
         //$catCodes[95] = self::CAT_CODE_SUBSCRIPT;
@@ -525,14 +513,15 @@ class LatexParser
             }
 
             $top = end($stack);
-            $acceptingArguments = (
-                ($top instanceof CommandNode) &&
-                (
-                    !isset($this->macroArgumentCounts[$top->getName()]) ||
-                    $top->getArgumentCount(false) < $this->macroArgumentCounts[$top->getName()]
-                )
-            );
-
+            $acceptingArguments = false;
+            if ($top instanceof CommandNode) {
+                if (!isset(self::MACRO_ARGUMENT_COUNTS[$top->getName()]) ||
+                    $top->getArgumentCount(false) < self::MACRO_ARGUMENT_COUNTS[$top->getName()]) {
+                    $acceptingArguments = true;
+                } else {
+                    array_pop($stack);
+                }
+            }
 
             if ($node !== null) {
                 $prevNode = $node;
