@@ -54,6 +54,9 @@ class LatexParser
     ];
 
     private const MACRO_ARGUMENT_COUNTS = [];
+
+    private readonly array $macroArgumentCounts;
+
     private const MACROS_BY_ARGUMENT_COUNT = [
         // macros that do not take an argument
         ['cup'],
@@ -80,11 +83,13 @@ class LatexParser
 
     public function __construct()
     {
+        $argCount = [];
         for ($i = 0; $i < count(self::MACROS_BY_ARGUMENT_COUNT); $i++) {
             foreach (self::MACROS_BY_ARGUMENT_COUNT[$i] as $macroName) {
-                self::MACRO_ARGUMENT_COUNTS[$macroName] = $i;
+                $argCount[$macroName] = $i;
             }
         }
+        $this->macroArgumentCounts = $argCount;
     }
 
     /**
@@ -517,8 +522,8 @@ class LatexParser
             $acceptingArguments = (
                 ($top instanceof CommandNode) &&
                 (
-                    !isset(self::MACRO_ARGUMENT_COUNTS[$top->getName()]) ||
-                    $top->getArgumentCount(false) < self::MACRO_ARGUMENT_COUNTS[$top->getName()]
+                    !isset($this->macroArgumentCounts[$top->getName()]) ||
+                    $top->getArgumentCount(false) < $this->macroArgumentCounts[$top->getName()]
                 )
             );
 
