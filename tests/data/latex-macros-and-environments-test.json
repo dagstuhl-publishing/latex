@@ -101,10 +101,60 @@
             "URL to related version"
         ],
         [
-            "linktext ={With additional commas, and braces \\\"{u}}",
+            "linktext = {With additional commas, and braces \\\"{u}}",
             "cite={test}",
             "caption=bla",
             "target={brain,,}"
         ]
+    ],
+    [
+        "\\section{Typesetting instructions -- Summary}",
+        "section",
+        "Typesetting instructions -- Summary",
+        [
+            "Typesetting instructions -- Summary"
+        ],
+        []
+    ],
+    [
+        "\\section{Known Argument-Count Test 1}",
+        "section",
+        "Known Argument-Count Test 1",
+        [
+            "Known Argument-Count Test 1"
+        ],
+        []
+    ],
+    [
+        "\\section[Optional]{Known Argument-Count Test 2}",
+        "section",
+        "Known Argument-Count Test 2",
+        [
+            "Known Argument-Count Test 2"
+        ],
+        [
+            "Optional"
+        ]
+    ],
+    [
+        "\\section*[optional]{non-optional}",
+        "section*",
+        "non-optional",
+        [
+            "non-optional"
+        ],
+        [
+            "optional"
+        ]
+    ],
+    [
+        "\\dummyMacro{Argument-Count Test 3}{Demo 3}",
+        "dummyMacro",
+        "Argument-Count Test 3",
+        [
+            "Argument-Count Test 3",
+            "Demo 3"
+        ],
+        []
     ]
 ]

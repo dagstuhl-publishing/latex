@@ -46,7 +46,7 @@ class LatexMacrosAndEnvironmentsTest extends TestCase
 
         $macrosReadFromLatexFile = [];
 
-        $macroNames = [ 'documentclass', 'title', 'author', 'relatedversiondetails', 'supplementdetails' ];
+        $macroNames = [ 'documentclass', 'title', 'author', 'relatedversiondetails', 'supplementdetails', 'section', 'section*', 'dummyMacro' ];
 
         foreach($macroNames as $name) {
             foreach ($latexFile->getMacros($name) as $macro) {
