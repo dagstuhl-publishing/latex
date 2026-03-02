@@ -53,6 +53,13 @@ class LatexParser
         'verbatim', 'VerbatimFigure'
     ];
 
+    private const MACRO_ARGUMENT_COUNTS = [];
+    private const MACROS_BY_ARGUMENT_COUNT = [
+        // macros that do not take an argument
+        ['cup'],
+        // macros with a single argument
+        ['section']
+    ];
 
     const CAT_CODE_ESCAPE = 0;
     const CAT_CODE_GROUP_BEGIN = 1;
@@ -70,6 +77,16 @@ class LatexParser
     const CAT_CODE_ACTIVE_CHAR = 13;
     const CAT_CODE_COMMENT_CHAR = 14;
     const CAT_CODE_INVALID_CHAR = 15;
+
+    public function __construct()
+    {
+        for ($i = 0; $i < count(self::MACROS_BY_ARGUMENT_COUNT); $i++) {
+            foreach (self::MACROS_BY_ARGUMENT_COUNT[$i] as $macroName) {
+                self::MACRO_ARGUMENT_COUNTS[$macroName] = $i;
+            }
+        }
+    }
+
     /**
      * @throws ParseException
      */
@@ -495,7 +512,15 @@ class LatexParser
                 }
             }
 
-            $acceptingArguments = (end($stack) instanceof CommandNode);
+            $top = end($stack);
+            $acceptingArguments = (
+                ($top instanceof CommandNode) &&
+                (
+                    !isset(self::MACRO_ARGUMENT_COUNTS[$top->getName()]) ||
+                    $top->getArgumentCount(false) < self::MACRO_ARGUMENT_COUNTS[$top->getName()]
+                )
+            );
+
 
             if ($node !== null) {
                 $prevNode = $node;
