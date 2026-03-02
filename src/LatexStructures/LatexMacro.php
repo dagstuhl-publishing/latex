@@ -350,21 +350,23 @@ class LatexMacro extends LatexString
 
     public function getTexOrPdfStringVersion(bool $boldMath = true, bool $fullMacro = true): string
     {
-        $argument = $this->getArgument();
+        $oldArgument = $argument = $this->getArgument();
 
-        $oldArgument = $argument;
+        // if author leaves PDF-string part empty: remove texorpdfstring macros and generate new
+        $texOrPdfStrings = $this->getMacros('texorpdfstring');
+        foreach($texOrPdfStrings as $textOrPdfString) {
+            if (trim($textOrPdfString->getArguments()[1] ?? '') === '' ) {
+                $argument = str_replace($textOrPdfString->getSnippet(), $textOrPdfString->getArguments()[0], $argument);
+                $argument = str_replace('\boldmath', ' ', $argument);
+            }
+        }
 
         if (str_contains($argument, 'texorpdfstring')) {
-
             if ($boldMath) {
-
                 $argumentBold = $argument;
-
                 $texOrPdfStrings = $this->getMacros('texorpdfstring');
-
                 foreach($texOrPdfStrings as $string) {
                     $texString = $string->getArguments()[0];
-
                     if (str_contains($texString, '$') AND !str_contains($texString, '\boldmath')) {
                         $boldTexString = '\boldmath '.$texString;
                         $argumentBold = str_replace($texString, $boldTexString, $argumentBold);
@@ -380,13 +382,9 @@ class LatexMacro extends LatexString
 
         else {
             $mathMgr = new PlaceholderManager();
-
             $argument = $mathMgr->substitutePatterns([ '/\$(.*)\$/U' ], $argument);
-
             $mathSnippets = $mathMgr->getSnippets();
-
             foreach($mathSnippets as $key=>$mathSnippet) {
-
                 $latexSnippet = new LatexString($mathSnippet);
 
                 // remove \bm{...} from $mathSnippet since \boldmath is added at the end
@@ -395,38 +393,18 @@ class LatexMacro extends LatexString
                 }
 
                 $mathString = new MetadataString($mathSnippet, $this->getLatexFile());
-                $mathString = $mathString->expandMacros()->getString();
-
-                $mathString = str_replace('\tilde{\mathcal{O}}', 'O~', $mathString);
-
-                $mathString = new MathString($mathString);
-                $asciiString = $mathString->convertToText(Converter::MAP_LATEX_TO_ASCII,true);
-
-                $asciiString = str_replace('\\infty', 'infinity', $asciiString->getString());
-                $asciiString = str_replace('\\overline', 'overline', $asciiString);
-
-                // add \ before special characters
-                // all characters not specified here will be quoted
-                $asciiString = preg_replace("#([^A-Za-z+\-*\/0-9\\\\ \!\:\|\.\,\;\=\(\)\>\<\[\]\']{1,1})#", '12345678987654321$1', $asciiString);
-
-                $asciiString = str_replace('12345678987654321', "\\", $asciiString);
-                $asciiString = str_replace('\{\}\\^*', '*', $asciiString);
-                $asciiString = str_replace('\\^*', '*', $asciiString);
-                $asciiString = str_replace('\\^', '\textasciicircum ', $asciiString);
-                $asciiString = str_replace(' \\circ ', ' o ', $asciiString);
-                $asciiString = str_replace('~', '\textasciitilde ', $asciiString);
-
-                $asciiString = str_replace('\\\\textasciitilde', '\textasciitilde', $asciiString);
-
-                foreach([ 'overleftarrow', 'varepsilon', 'sum', 'oplus', 'cup' ] as $reservedWord) {
-                    $asciiString = str_replace('\\'.$reservedWord, $reservedWord, $asciiString);
-                }
-
-                $asciiString = trim($asciiString);
+                $utf8String = $mathString->toUtf8String();
+                $utf8String = str_replace('\\', '', $utf8String);
+                $utf8String = str_replace('^', '\textasciicirmum ', $utf8String);
+                $utf8String = str_replace('_', '\_', $utf8String);
+                $utf8String = str_replace('{', '\{', $utf8String);
+                $utf8String = str_replace('}', '\}', $utf8String);
+                $utf8String = str_replace('~', '\textasciitilde ', $utf8String);
+                $utf8String = trim($utf8String);
 
                 $mathSnippets[$key] = $boldMath
-                    ? '\\texorpdfstring{\boldmath ' . $mathSnippet . '}{' . $asciiString . '}'
-                    : '\\texorpdfstring{' . $mathSnippet . '}{' . $asciiString . '}';
+                    ? '\\texorpdfstring{\boldmath ' . $mathSnippet . '}{' . $utf8String . '}'
+                    : '\\texorpdfstring{' . $mathSnippet . '}{' . $utf8String . '}';
             }
 
             $mathMgr->setSnippets($mathSnippets);
