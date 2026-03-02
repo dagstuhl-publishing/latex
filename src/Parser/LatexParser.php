@@ -92,7 +92,7 @@ class LatexParser
         $argCount = [];
         for ($i = 0; $i < count(self::MACROS_BY_ARGUMENT_COUNT); $i++) {
             foreach (self::MACROS_BY_ARGUMENT_COUNT[$i] as $macroName) {
-                $argCount[$macroName] = $i;
+                $argCount['\\'.$macroName] = $i;
             }
         }
         $this->macroArgumentCounts = $argCount;
