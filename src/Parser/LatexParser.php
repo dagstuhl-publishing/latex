@@ -53,8 +53,6 @@ class LatexParser
         'verbatim', 'VerbatimFigure'
     ];
 
-    private const MACRO_ARGUMENT_COUNTS = [];
-
     private readonly array $macroArgumentCounts;
 
     private const MACROS_BY_ARGUMENT_COUNT = [
