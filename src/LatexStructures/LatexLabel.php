@@ -6,7 +6,7 @@ use Dagstuhl\Latex\Strings\StringHelper;
 
 class LatexLabel
 {
-    const TMP_LABEL_IDENTIFIER = 'tmpLabelaz654kd87cnh34g';
+    const TMP_LABEL_IDENTIFIER = 'tmpLabelaYoslKasdfcnhGPoJh';
 
     const UNKNOWN = '\UNKNOWN';
 
