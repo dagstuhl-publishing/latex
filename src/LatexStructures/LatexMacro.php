@@ -395,7 +395,7 @@ class LatexMacro extends LatexString
                 $mathString = new MetadataString($mathSnippet, $this->getLatexFile());
                 $utf8String = $mathString->toUtf8String();
                 $utf8String = str_replace('\\', '', $utf8String);
-                $utf8String = str_replace('^', '\textasciicirmum ', $utf8String);
+                $utf8String = str_replace('^', '\textasciicircum ', $utf8String);
                 $utf8String = str_replace('_', '\_', $utf8String);
                 $utf8String = str_replace('{', '\{', $utf8String);
                 $utf8String = str_replace('}', '\}', $utf8String);
