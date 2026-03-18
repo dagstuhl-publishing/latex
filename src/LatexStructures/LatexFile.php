@@ -656,6 +656,7 @@ class LatexFile extends LatexString
             return $output;
         }
 
+        LatexString::$useParser = false;
         $auxFile = new LatexFile($auxPath);
 
         //\gdef\@pageNumberEndAbstract{1}
@@ -694,6 +695,7 @@ class LatexFile extends LatexString
             $output['lastpage'] = $s[0]->getArguments()[0];
         }
 
+        LatexString::$useParser = true;
         return $output;
     }
 }
