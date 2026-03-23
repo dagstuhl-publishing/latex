@@ -41,10 +41,10 @@ abstract class LatexPatterns
         'listingLemma', 'listingJolie', 'lstlisting', 'longcode', 'langlisting', 'leanlisting',
         'minted', 'mcode', 'mzn', 'myequations',
         'numcodejava', 'nicehaskell', 'numpylisting', 'numberedprogram',
-        'ocalm', 'OCAMLLISTING',
+        'ocalm', 'OCAMLLISTING', 'owlframe',
         'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO', 'pseudolisting',
-        'rustlisting',
-        'scalalisting',
+        'rdfframe', 'rustlisting',
+        'scalalisting', 'smolframe', 'sparqlframe',
         'verbatim', 'VerbatimFigure'
     ];
 
