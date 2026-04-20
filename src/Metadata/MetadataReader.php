@@ -166,6 +166,8 @@ class MetadataReader
             }
 
             $differentIdentifiers = explode('|', $latexIdentifier);
+            // rewrite $latexIdentifier in such a way that the parser can handle the macro name
+            $latexIdentifier = str_replace('|', 'xxxORxxx', $latexIdentifier);
 
             if (count($differentIdentifiers) > 1) {
                 $content = $this->latexFile->getContents();
