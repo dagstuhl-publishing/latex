@@ -30,9 +30,10 @@ abstract class LatexPatterns
 
     // names of code environments
     const CODE_ENVIRONMENT_NAMES = [
-        'alltt', 'abscode', 'allinlustre', 'allinlustre-figure', 'AnerisPLsmall', 'ainflisting',
+        'alltt', 'abscode', 'allinlustre', 'allinlustre-figure', 'AnerisPLsmall', 'AnerisPL', 'ainflisting',
         'bull', 'BVerbatim',
-        'chorlisting', 'chorallisting', 'code', 'codeblock', 'codeblockcss', 'codejava', 'coq', 'coqlisting', 'clang-figure', 'clang',
+        'chorlisting', 'chorallisting', 'code', 'codeblock', 'codeblockcss', 'codejava', 'coq',
+        'coqlisting', 'clang-figure', 'clang', 'cpplst',
         'excerpt', 'excerpt\*', 'easycrypt',
         'FigureVerbatim',
         'granule', 'gql\*', 'haskell', 'Highlighting',
@@ -42,7 +43,7 @@ abstract class LatexPatterns
         'minted', 'mcode', 'mzn', 'myequations',
         'numcodejava', 'nicehaskell', 'numpylisting', 'numberedprogram',
         'ocalm', 'OCAMLLISTING', 'owlframe',
-        'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO', 'pseudolisting',
+        'pecan', 'program', 'PYTHONLISTING', 'PYTHONLISTINGGNOLINENO', 'pseudolisting', 'plaintext',
         'rdfframe', 'rustlisting',
         'scalalisting', 'smolframe', 'sparqlframe',
         'verbatim', 'VerbatimFigure'
