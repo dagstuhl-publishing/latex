@@ -142,11 +142,11 @@ class PdfFile
                             $word['yMin'] < $headerMargin
                         )
                     ) {
-                        return true;
+                        return false;
                     }
                 }
 
-                return false;
+                return true;
             }
 
             if (!function_exists('config')) {
@@ -234,8 +234,8 @@ class PdfFile
                 }
             }
 
-            $this->authorRunningFits = !analyzePageSet($oddWords, $marginTolerance);
-            $this->titleRunningFits = !analyzePageSet($evenWords, $marginTolerance);
+            $this->authorRunningFits = analyzePageSet($oddWords, $marginTolerance);
+            $this->titleRunningFits = analyzePageSet($evenWords, $marginTolerance);
         }
 
         $this->runningsChecked = true;
