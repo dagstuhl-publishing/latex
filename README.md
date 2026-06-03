@@ -99,7 +99,8 @@ return [
     'paths' => [
         'bin' => env('LATEX_USER_BIN'),   // PATH variable used in default build environment
         'home' => env('LATEX_USER_HOME'), // HOME variable used in default build environment
-        'pdf-info-bin' => env('PDF_INFO_BIN'),  // path to your pdf-info binary
+        'pdf-info-bin' => env('PDF_INFO_BIN'),  // path to your pdfinfo binary
+        'pdf-to-text-bin' => env('PDF_TO_TEXT_BIN'),  // path to your pdftotext binary
         'resources' => env('LATEX_RESOURCES_FOLDER'), // resources folder (in case you want to use your own resources) 
     ],
     'styles' => [

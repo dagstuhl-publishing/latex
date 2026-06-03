@@ -20,6 +20,7 @@ class LatexFile extends LatexString
     private ?array $labels = NULL;
     private bool $normalizedNewCommands = false;
 
+    private ?PdfFile $pdfFile = NULL;
 
     public function __construct(string $pathToFile)
     {
@@ -72,28 +73,20 @@ class LatexFile extends LatexString
         return pathinfo($this->path, PATHINFO_DIRNAME).'/';
     }
 
-    public function getNumberOfPages(): int
+    public function getPdfFile(): ?PdfFile
     {
-        $pageCount = 0;
-
-        $cmd = config('latex.paths.pdf-info-bin').' "'.Filesystem::storagePath($this->getPath('pdf')).'"';
-
-        exec ($cmd, $output);
-
-        foreach($output as $op) {
-            if (preg_match("/Pages:\s*(\d+)/i", $op, $matches) === 1) {
-                $pageCount = intval($matches[1]);
-                break;
-            }
+        if ($this->pdfFile === NULL) {
+            $this->pdfFile = PdfFile::fromLatexFile($this);
         }
 
-        return $pageCount;
+        return $this->pdfFile;
+    }
 
-        /* alternatively: from tex log
-        $latexCompiler = new LatexCompiler($this);
+    public function getNumberOfPages(): int
+    {
+        $pdfFile = $this->getPdfFile();
 
-        return $latexCompiler->getNumberOfPages();
-        */
+        return $pdfFile === NULL ? 0 : $pdfFile->getNumberOfPages();
     }
 
     public function getContents(bool $withoutComments = false): string
