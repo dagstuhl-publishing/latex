@@ -94,7 +94,7 @@ class PdfFile
         return $this->titleRunningFits;
     }
 
-    private function assertRunningsChecked() {
+    private function assertRunningsChecked(): void {
         if (!$this->runningsChecked) {
             $this->runningsChecked = true;
 
