@@ -61,6 +61,7 @@ class PdfFile
     {
         if ($this->pageCount < 0) {
             if (!function_exists('config')) {
+                Log::error("Function 'config' does not exist, but is needed to find the pdfinfo binary.");
                 return 0;
             }
 
