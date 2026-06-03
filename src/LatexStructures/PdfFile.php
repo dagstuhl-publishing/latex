@@ -29,7 +29,8 @@ class PdfFile
     {
         try {
             return new self($latexFile->getPath('pdf'), $latexFile);
-        } catch (\InvalidArgumentException) {
+        } catch (\InvalidArgumentException $e) {
+            Log::error($e->getMessage());
             return NULL;
         }
     }
