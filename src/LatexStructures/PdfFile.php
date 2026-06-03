@@ -92,6 +92,8 @@ class PdfFile
 
     private function assertRunningsChecked() {
         if (!$this->runningsChecked) {
+            $this->runningsChecked = true;
+
             $marginTolerance = 1.0;
 
             function analyzePageSet(array $words, float $marginTolerance): bool
@@ -215,6 +217,12 @@ class PdfFile
             foreach ($pages as $pageIndex => $page) {
                 if ($pageIndex == 0) continue;
 
+                if ($pageIndex % 2 == 0) {
+                    $words = &$oddWords;
+                } else {
+                    $words = &$evenWords;
+                }
+
                 $wordNodes = $page->getElementsByTagName('word');
 
                 foreach ($wordNodes as $word) {
@@ -226,18 +234,12 @@ class PdfFile
                         'yMax' => round((float)$word->getAttribute('yMax')),
                     ];
 
-                    if ($pageIndex % 2 === 0) {
-                        $oddWords[] = $oddEvenWord;
-                    } else {
-                        $evenWords[] = $oddEvenWord;
-                    }
+                    $words[] = $oddEvenWord;
                 }
             }
 
             $this->authorRunningFits = analyzePageSet($oddWords, $marginTolerance);
             $this->titleRunningFits = analyzePageSet($evenWords, $marginTolerance);
         }
-
-        $this->runningsChecked = true;
     }
 }
