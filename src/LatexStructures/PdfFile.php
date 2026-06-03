@@ -2,6 +2,8 @@
 
 namespace Dagstuhl\Latex\LatexStructures;
 
+use Illuminate\Support\Facades\Log;
+
 use Dagstuhl\Latex\Utilities\Filesystem;
 use DOMDocument;
 
@@ -152,11 +154,13 @@ class PdfFile
             }
 
             if (!function_exists('config')) {
+                Log::error("Function 'config' does not exist, but is needed to find the pdftotext binary.");
                 return;
             }
 
             $pdftotextBin = config('latex.paths.pdf-to-text-bin');
             if (!is_executable($pdftotextBin)) {
+                Log::error("Need pdftotext binary, but got this non-executable: $pdftotextBin");
                 return;
             }
 
@@ -170,6 +174,7 @@ class PdfFile
             $process = proc_open($cmd, $descriptors, $pipes);
 
             if (!is_resource($process)) {
+                Log::error("Failed to run pdftotext on file '$this->path'.");
                 return;
             }
 
@@ -182,6 +187,7 @@ class PdfFile
             $status = proc_close($process);
 
             if ($status !== 0) {
+                Log::error("Process pdftotext finished with non-zero return status.");
                 return;
             }
 
@@ -197,16 +203,19 @@ class PdfFile
             $dom = new DOMDocument();
 
             if (!$dom->loadXML($xml)) {
+                $xmlErrors = "Failed to parse XML output of pdftotext:";
                 foreach (libxml_get_errors() as $error) {
-                    echo $error->message;
+                    $xmlErrors .= "\n- $error->message";
                 }
-                exit(1);
+                Log::error($xmlErrors);
+                return;
             }
 
             $pages = $dom->getElementsByTagName('page');
 
             $this->pageCount = $pages->length;
             if ($this->pageCount === 0) {
+                Log::error("No pages found in PDF document.");
                 return;
             }
 
