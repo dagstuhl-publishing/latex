@@ -399,19 +399,24 @@ class MetadataReader
 
         $authorNames = [];
         foreach($authors as $author) {
-
             $name = $author->getArgument();
-            foreach($author->getMacros('footnote') as $footnote) {
-                $name = str_replace($footnote->getSnippet(), '', $name);
-                $name = preg_replace('/\$\^[0-9\*]+\$/', '', $name);
-                $name = preg_replace('/\$\^\{[0-9\*]+\}\$/', '', $name);
+
+            $footnoteMacros = [ 'footnote', 'footnotemark', 'thanks', 'textsuperscript' ];
+            foreach($footnoteMacros as $footnoteMacro) {
+                foreach($author->getMacros($footnoteMacro) as $footnote) {
+                    $name = str_replace($footnote->getSnippet(), '', $name);
+                }
             }
 
+            $name = preg_replace('/\$[^$]+\$/', '', $name);
             $name = str_replace('\~', 'PPPP-TILDE-PPP', $name);
             $name = str_replace('~', ' ', $name);
             $name = str_replace('PPPP-TILDE-PPP', '\~', $name);
 
             $name = preg_replace('/\(.*\)/', '', $name);
+            if (!str_ends_with($name, '\ss')) {
+                $name = preg_replace('/\\\\[a-zA-Z]+$/', '', $name);
+            }
 
             $authorNames[] = $name;
 
@@ -442,14 +447,19 @@ class MetadataReader
                 $name = mb_substr($name, 0, mb_strlen($name) - 1);
             }
 
-            foreach($author->getMacros('footnote') as $footnote) {
-                $name = str_replace($footnote->getSnippet(), '', $name);
-                $name = preg_replace('/\$\^[0-9\*]+\$/', '', $name);
-                $name = preg_replace('/\$\^\{[0-9\*]+\}\$/', '', $name);
+            $footnoteMacros = [ 'footnote', 'footnotemark', 'thanks', 'textsuperscript' ];
+            foreach($footnoteMacros as $footnoteMacro) {
+                foreach($author->getMacros($footnoteMacro) as $footnote) {
+                    $name = str_replace($footnote->getSnippet(), '', $name);
+                }
             }
+
+            $name = preg_replace('/\$[^$]+\$/', '', $name);
             $name = Converter::convert($name,Converter::MAP_LATEX_TO_UTF8);
             $name = str_replace('~', ' ', $name);
             $name = str_replace('\,', ' ', $name);
+            // after LaTeX to utf8 conversion, remaining macros at the end of a name can be removed
+            $name = preg_replace('/\\\\[a-zA-Z]+$/', '', $name);
             $authorNames[] = self::abbreviateAuthor($name);
         }
 
