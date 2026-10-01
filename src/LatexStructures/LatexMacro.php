@@ -348,7 +348,7 @@ class LatexMacro extends LatexString
         $this->linesToAppend[] = $line;
     }
 
-    public function getTexOrPdfStringVersion(bool $boldMath = true, bool $fullMacro = true): string
+    public function getTexOrPdfStringVersion(bool $boldMath = true, bool $fullMacro = true, bool $newMacroOnly = false): string
     {
         $oldArgument = $argument = $this->getArgument();
 
@@ -373,11 +373,13 @@ class LatexMacro extends LatexString
                     }
                 }
 
-                $comment = '%'.$this->getMacroString($argumentBold)."\n";
+                $newMacro = $this->getMacroString($argumentBold);
             }
             else {
-                $comment = '%'.$this->getMacroString($argument)."\n";
+                $newMacro = $this->getMacroString($argument);
+
             }
+            $comment = '%'.$newMacro."\n";
         }
 
         else {
@@ -410,13 +412,19 @@ class LatexMacro extends LatexString
             $mathMgr->setSnippets($mathSnippets);
             $argument = $mathMgr->reSubstitute($argument);
 
-            $comment = '%'.$this->getMacroString($argument)."\n";
+            $newMacro = $this->getMacroString($argument);
+            $comment = '%'.$newMacro."\n";
             $argument = $oldArgument;
         }
 
-        return $fullMacro
-            ? $this->getMacroString($argument, $comment)
-            : $argument.$comment;
+        if ($newMacroOnly) {
+            return preg_replace('#\s+#u', ' ', $newMacro);
+        }
 
+        $macroString = $this->getMacroString($argument, $comment);
+
+        return $fullMacro
+            ? $macroString
+            : $argument.$comment;
     }
 }
