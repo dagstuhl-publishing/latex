@@ -2,6 +2,10 @@
 
 namespace Dagstuhl\Latex\Bibliography;
 
+use Dagstuhl\Latex\Bibliography\Parser\BibtexDiagnostic;
+use Dagstuhl\Latex\Bibliography\Parser\BibtexDocument;
+use Dagstuhl\Latex\Bibliography\Parser\BibtexParser;
+use Dagstuhl\Latex\Utilities\Filesystem;
 use Exception;
 use Throwable;
 use Dagstuhl\Latex\Strings\StringHelper;
@@ -41,6 +45,10 @@ class BibFile
     private ?Bibliography $bibliography = NULL;
     private bool $logParser = false;
     private bool $crossRefMerge = true;
+
+    public static bool $useParser = false;
+
+    public readonly BibtexDocument $bibtexDocument;
 
     public function __construct(string $path, BblFile|Bibliography|NULL $bblFileOrBibliography = NULL)
     {
@@ -201,31 +209,55 @@ class BibFile
     {
         $this->allEntries = [];
 
-        $bibParser = new ParseEntries($this->logParser);
+        if (self::$useParser === true) {
+            try {
+                $source = Filesystem::get($this->path);
+            } catch (Exception) {
+                $source = '';
+            }
 
-        $bibParser->setExpandMacro(true);
-        $bibParser->loadStringMacro(BibEntry::JOURNAL_ABBREVIATIONS + self::getMonthArray());
+            $document = $this->bibtexDocument = (new BibtexParser)
+                ->withStrings(BibEntry::JOURNAL_ABBREVIATIONS + self::getMonthArray())
+                ->parse($source);
 
-        $bibParser->openBib($this->path);
+            foreach ($document->diagnostics() as $diagnostic) {
+                if ($this->logParser || $diagnostic->severity === BibtexDiagnostic::ERROR) {
+                    $this->writeLog(
+                        BibEntry::LOG_OUTPUT,
+                        (string) $diagnostic,
+                        $diagnostic->severity === BibtexDiagnostic::ERROR ? BibEntry::LOG_ALERT : null
+                    );
+                }
+            }
 
-        try {
-            $bibParser->extractEntries();
-            list($preamble, $strings, $entries, $undefinedStrings) = $bibParser->returnArrays();
+            foreach ($document->entries() as $entry) {
+                $this->allEntries[] = new BibEntry($entry);
+            }
         }
-        catch(Throwable $ex) {
+        else {
+            $bibParser = new ParseEntries($this->logParser);
+            $bibParser->setExpandMacro(true);
+            $bibParser->loadStringMacro(BibEntry::JOURNAL_ABBREVIATIONS + self::getMonthArray());
+            $bibParser->openBib($this->path);
 
-            $this->writeLog(BibEntry::LOG_OUTPUT, $ex->getMessage(), BibEntry::LOG_ALERT);
-            //var_dump($ex->getMessage());
-            //exit();
-            throw $ex;
-        }
+            try {
+                $bibParser->extractEntries();
+                list($preamble, $strings, $entries, $undefinedStrings) = $bibParser->returnArrays();
+            } catch (Throwable $ex) {
 
-        $bibParser->closeBib();
+                $this->writeLog(BibEntry::LOG_OUTPUT, $ex->getMessage(), BibEntry::LOG_ALERT);
+                //var_dump($ex->getMessage());
+                //exit();
+                throw $ex;
+            }
 
-        $this->mergeLogs($bibParser);
+            $bibParser->closeBib();
 
-        foreach ($entries as $entry) {
-            $this->allEntries[] = new BibEntry($entry);
+            $this->mergeLogs($bibParser);
+
+            foreach ($entries as $entry) {
+                $this->allEntries[] = new BibEntry($entry);
+            }
         }
     }
 
