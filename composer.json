@@ -37,6 +37,7 @@
   "readme": "README.md",
   "require": {
     "php": "^8.1",
+    "ext-ctype": "*",
     "ext-mbstring": "*",
     "ext-simplexml": "*",
     "ext-json": "*",
