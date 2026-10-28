@@ -126,11 +126,16 @@ final class BibtexParser
             $this->strings[$name] = $this->resolve($pieces, $line, null, contract: false);
         }
 
-        $entries = [];
-
-        foreach ($rawEntries as $raw) {
-            $entries[] = $this->resolveEntry($raw);
+        // an entry still holding unresolved fields is finished here; the rest
+        // were finished as they were read. Resolved in place and freed one at a
+        // time, so a large bibliography never holds both forms of every entry.
+        foreach (array_keys($rawEntries) as $key) {
+            if (isset($rawEntries[$key]['fields'])) {
+                $rawEntries[$key] = $this->resolveEntry($rawEntries[$key]);
+            }
         }
+
+        $entries = $rawEntries;
 
         $preamble = '';
 
@@ -155,7 +160,7 @@ final class BibtexParser
      * Outside an entry everything is a comment - BibTeX's own rule - so the
      * loop is "find an @, read what follows it, repeat".
      *
-     * @return array{0: array<int, array{type: string, citation: string, fields: array<string, array>, line: int}>, 1: array<int, array{0: string, 1: array, 2: int}>, 2: array<int, array{0: array, 1: int}>}
+     * @return array{0: array<int, array{type: string, citation: string, fields: array<string, string|array>, line: int}>, 1: array<int, array{0: string, 1: string|array, 2: int}>, 2: array<int, array{0: string|array, 1: int}>}
      */
     private function collect(string $source): array
     {
@@ -248,14 +253,14 @@ final class BibtexParser
                 break;
             }
 
-            $fieldLine = $scanner->line();
+            $fieldAt = $scanner->position();
             $name = strtolower(trim($scanner->readName()));
             $scanner->skipWhitespace();
 
             if ($name === '') {
                 $this->diagnostics[] = BibtexDiagnostic::warning(
                     'Skipped something that is not a field.',
-                    $fieldLine,
+                    $scanner->line($fieldAt),
                     $citation
                 );
 
@@ -265,7 +270,7 @@ final class BibtexParser
             if (! $scanner->accept('=')) {
                 $this->diagnostics[] = BibtexDiagnostic::warning(
                     'Field "'.$name.'" has no "=".',
-                    $fieldLine,
+                    $scanner->line($fieldAt),
                     $citation
                 );
 
@@ -275,7 +280,7 @@ final class BibtexParser
             if (array_key_exists($name, $fields)) {
                 $this->diagnostics[] = BibtexDiagnostic::warning(
                     'Field "'.$name.'" appears twice; the later one wins.',
-                    $fieldLine,
+                    $scanner->line($fieldAt),
                     $citation
                 );
             }
@@ -289,7 +294,24 @@ final class BibtexParser
             }
         }
 
-        $entries[] = ['type' => $type, 'citation' => $citation, 'fields' => $fields, 'line' => $line];
+        // a value containing a macro is the only thing the second pass can
+        // change, so an entry without one is finished already - which is most
+        // of them, and is what keeps a 38 MB bibliography out of swap
+        foreach ($fields as $value) {
+            if (is_array($value)) {
+                $entries[] = ['type' => $type, 'citation' => $citation, 'fields' => $fields, 'line' => $line];
+
+                return;
+            }
+        }
+
+        $entry = [self::ENTRY_TYPE => $type, self::CITATION => $citation];
+
+        foreach ($fields as $name => $value) {
+            $entry[$name] = $this->contract($value);
+        }
+
+        $entries[] = $entry;
     }
 
     /**
@@ -300,7 +322,7 @@ final class BibtexParser
     private function readCitation(BibtexScanner $scanner): string
     {
         $start = $scanner->position();
-        $name = $scanner->readName();
+        $name = $scanner->readCitationKey();
         $scanner->skipWhitespace();
 
         if ($scanner->peek() === '=') {
@@ -321,12 +343,14 @@ final class BibtexParser
      * kind and its text, so the second pass can tell a macro name from a word
      * that happens to look like one.
      *
-     * @return array{pieces: array<int, array{0: string, 1: string}>, line: int}
+     * @return string|array{pieces: array<int, array{0: string, 1: string}>, line: int}
+     *                                                                                  a plain string once it is already final - see below
      */
-    private function readValue(BibtexScanner $scanner, ?string $citation): array
+    private function readValue(BibtexScanner $scanner, ?string $citation): string|array
     {
-        $line = $scanner->line();
+        $at = $scanner->position();
         $pieces = [];
+        $hasMacro = false;
 
         while (true) {
             $scanner->skipWhitespace();
@@ -337,7 +361,11 @@ final class BibtexParser
                 $group = $scanner->readBraceGroup();
 
                 if ($group === null) {
-                    $this->diagnostics[] = BibtexDiagnostic::error('A value is never closed.', $line, $citation);
+                    $this->diagnostics[] = BibtexDiagnostic::error(
+                        'A value is never closed.',
+                        $scanner->line($at),
+                        $citation
+                    );
 
                     break;
                 }
@@ -347,7 +375,11 @@ final class BibtexParser
                 $quoted = $scanner->readQuotedString();
 
                 if ($quoted === null) {
-                    $this->diagnostics[] = BibtexDiagnostic::error('A quoted value is never closed.', $line, $citation);
+                    $this->diagnostics[] = BibtexDiagnostic::error(
+                        'A quoted value is never closed.',
+                        $scanner->line($at),
+                        $citation
+                    );
 
                     break;
                 }
@@ -363,6 +395,7 @@ final class BibtexParser
                 }
 
                 $pieces[] = ['macro', trim($name)];
+                $hasMacro = true;
             }
 
             $scanner->skipWhitespace();
@@ -372,7 +405,15 @@ final class BibtexParser
             }
         }
 
-        return ['pieces' => $pieces, 'line' => $line];
+        // the overwhelming majority of values are a single braced group with no
+        // macro in them, and nothing about those can change in the second pass.
+        // Keeping them as one string rather than as an array of pieces is what
+        // makes a 38 MB bibliography fit in memory.
+        if (! $hasMacro) {
+            return implode('', array_column($pieces, 1));
+        }
+
+        return ['pieces' => $pieces, 'line' => $scanner->line($at)];
     }
 
     private function resolveEntry(array $raw): array
@@ -383,15 +424,19 @@ final class BibtexParser
         ];
 
         foreach ($raw['fields'] as $name => $value) {
-            $entry[$name] = $this->resolve($value, $value['line'], $raw['citation']);
+            $entry[$name] = $this->resolve($value, is_array($value) ? $value['line'] : $raw['line'], $raw['citation']);
         }
 
         return $entry;
     }
 
-    /** @param array{pieces: array, line: int} $value */
-    private function resolve(array $value, int $line, ?string $citation, bool $contract = true): string
+    /** @param string|array{pieces: array, line: int} $value */
+    private function resolve(string|array $value, int $line, ?string $citation, bool $contract = true): string
     {
+        if (is_string($value)) {
+            return $contract ? $this->contract($value) : $value;
+        }
+
         $resolved = '';
 
         foreach ($value['pieces'] as [$kind, $text]) {

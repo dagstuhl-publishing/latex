@@ -17,6 +17,9 @@ final class BibtexScanner
 
     private readonly int $length;
 
+    /** @var int[]|null offsets of every newline, built on first use */
+    private ?array $newlines = null;
+
     /**
      * $baseLine lets a scanner over an entry body still report file lines: the
      * body is a slice, so its own line 1 is wherever the entry began.
@@ -48,10 +51,41 @@ final class BibtexScanner
         return $this->atEnd() ? null : $this->source[$this->position++];
     }
 
-    /** 1-based, for diagnostics; counted on demand rather than tracked. */
+    /**
+     * 1-based, for diagnostics.
+     *
+     * Counted against an index of the newline offsets, built once on the first
+     * call. Counting from the start each time is O(position), and the parser
+     * asks for a line per field, which on a megabyte .bib is quadratic - the
+     * shape that made a volume take minutes rather than seconds.
+     */
     public function line(?int $position = null): int
     {
-        return substr_count($this->source, "\n", 0, min($position ?? $this->position, $this->length)) + $this->baseLine;
+        $position = min($position ?? $this->position, $this->length);
+
+        if ($this->newlines === null) {
+            $this->newlines = [];
+            $offset = 0;
+
+            while (($offset = strpos($this->source, "\n", $offset)) !== false) {
+                $this->newlines[] = $offset++;
+            }
+        }
+
+        $low = 0;
+        $high = count($this->newlines);
+
+        while ($low < $high) {
+            $middle = intdiv($low + $high, 2);
+
+            if ($this->newlines[$middle] < $position) {
+                $low = $middle + 1;
+            } else {
+                $high = $middle;
+            }
+        }
+
+        return $low + $this->baseLine;
     }
 
     public function seek(int $position): void
@@ -115,6 +149,19 @@ final class BibtexScanner
     {
         return $this->readWhile(
             static fn (string $c): bool => ! ctype_space($c) && ! str_contains('{}()",=#%', $c)
+        );
+    }
+
+    /**
+     * A citation key, which is far more permissive than a name: DOI-derived
+     * keys such as 10.1016/S0304-3975(00)00399-6 are common, so parentheses
+     * have to be ordinary characters here. The entry's delimiters were already
+     * consumed, so only what separates the key from the first field can end it.
+     */
+    public function readCitationKey(): string
+    {
+        return $this->readWhile(
+            static fn (string $c): bool => ! ctype_space($c) && ! str_contains('{}",=', $c)
         );
     }
 
