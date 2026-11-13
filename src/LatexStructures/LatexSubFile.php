@@ -12,6 +12,7 @@ class LatexSubFile
     const TYPE_INPUT = 'input';
     const TYPE_INCLUDE = 'include';
     const TYPE_IMPORT = 'import';
+    const TYPE_SUB_IMPORT = 'subimport';
     const TYPE_SUBFILE = 'subfile';
     const TYPE_PACKAGE = 'package';
 
@@ -21,7 +22,7 @@ class LatexSubFile
         [ 'regex' => '=\\\\include\{(.*)\}=U',            'snippet' => '\include{@@@}',   'type' => self::TYPE_INCLUDE ],
         [ 'regex' => '=\\\\include (.*)[ \\\\\n\r]{1}=',  'snippet' => '\include @@@',    'type' => self::TYPE_INCLUDE ],
         [ 'regex' => '=\\\\import\{(.*)\}\{(.*)\}=U',     'snippet' => '\import{@@@}{@@}', 'type' => self::TYPE_IMPORT ],
-        [ 'regex' => '=\\\\subimport\{(.*)\}\{(.*)\}=U',  'snippet' => '\subimport{@@@}{@@}', 'type' => self::TYPE_IMPORT ],
+        [ 'regex' => '=\\\\subimport\{(.*)\}\{(.*)\}=U',  'snippet' => '\subimport{@@@}{@@}', 'type' => self::TYPE_SUB_IMPORT ],
         [ 'regex' => '=\\\\subfile\{(.*)\}=U',            'snippet' => '\subfile{@@@}',   'type' => self::TYPE_SUBFILE ],
         [ 'regex' => '=\\\\usepackage\{(.*)\}=U',         'snippet' => '\usepackage{@@@}', 'type' => self::TYPE_PACKAGE ]
     ];
@@ -90,7 +91,7 @@ class LatexSubFile
 
         $string = substr($this->snippet, 1);
 
-        foreach([ self::TYPE_INPUT, self::TYPE_INCLUDE, self::TYPE_SUBFILE ] as $type) {
+        foreach([ self::TYPE_INPUT, self::TYPE_INCLUDE, self::TYPE_SUBFILE, self::TYPE_IMPORT, self::TYPE_SUB_IMPORT ] as $type) {
             if (StringHelper::startsWith($string, $type)) {
                 return $type;
             }
@@ -160,9 +161,31 @@ class LatexSubFile
             $contents = substr($contents, $pos1 + 16, $pos2 - $pos1 - 16);
         }
 
-        return $pos === false
+        $contents = $pos === false
             ? $contents
             : substr($contents, 0, $pos);
+
+        if ($this->getType() === self::TYPE_SUB_IMPORT) {
+            $latexString = new LatexString($contents);
+            $realtivePath = (new LatexString($this->getSnippet()))->getMacro('subimport')->getArguments()[0];
+
+            $inputMacros = $latexString->getMacros('input');
+
+            foreach($inputMacros as $macro) {
+                $oldSnippet = $macro->getSnippet();
+                $newSnippet = str_replace('\input{', '\input{'.$realtivePath,$macro->getSnippet());
+                $contents = str_replace($oldSnippet, $newSnippet, $contents);
+            }
+
+            $subImportMacros = $latexString->getMacros('subimport');
+            foreach($subImportMacros as $macro) {
+                $oldSnippet = $macro->getSnippet();
+                $newSnippet = str_replace('\subimport{', '\subimport{'.$realtivePath.'/'.$macro->getArguments()[0],$macro->getSnippet());
+                $contents = str_replace($oldSnippet, $newSnippet, $contents);
+            }
+        }
+
+        return $contents;
     }
 
     /**
@@ -188,9 +211,9 @@ class LatexSubFile
 
                 $snippet = str_replace('@@@', $name, $pattern['snippet']);
 
-                if ($pattern['type'] === self::TYPE_IMPORT) {
+                if ($pattern['type'] === self::TYPE_IMPORT OR $pattern['type'] === self::TYPE_SUB_IMPORT) {
                     $snippet = str_replace('@@', $matches[2][$key], $snippet);
-                    $name = $matches[2][$key].'/'.$name;
+                    $name = $name.'/'.$matches[2][$key];
                     $name = str_replace('//', '/', $name);
                 }
 
