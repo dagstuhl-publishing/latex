@@ -285,6 +285,20 @@ class LIPIcs_OASIcs_v2021 implements StyleDescription
                 ]
             ],
             [
+                'name' => 'genAiDeclaration',
+                'type' => MetadataItem::TYPE_MACRO,
+                'latexIdentifier' => 'genAI',
+                'mappings' => [
+                    MetadataReader::FORMAT_UTF8 => [ MetadataMappings::class.'::reviseMacroV1' ],
+                    MetadataReader::FORMAT_LATEX_REVISED => [ MetadataMappings::class.'::normalizeLineBreaksAndBlanksV1' ],
+                    MetadataReader::FORMAT_LATEX_RAW => [],
+                ],
+                'groups' => [
+                    MetadataItem::GROUP_OPTIONAL, MetadataItem::GROUP_AT_MOST_1,
+                    MetadataItem::GROUP_METADATA_BLOCK, MetadataItem::NEWLINE
+                ]
+            ],
+            [
                 'name' => 'articleNo',
                 'type' => MetadataItem::TYPE_MACRO,
                 'latexIdentifier' => 'ArticleNo',
