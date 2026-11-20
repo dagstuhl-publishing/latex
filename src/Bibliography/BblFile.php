@@ -4,6 +4,7 @@
 namespace Dagstuhl\Latex\Bibliography;
 
 
+use Dagstuhl\Latex\LatexStructures\LatexFile;
 use Dagstuhl\Latex\LatexStructures\LatexString;
 use Dagstuhl\Latex\Strings\MetadataString;
 use Dagstuhl\Latex\Strings\StringHelper;
@@ -20,7 +21,9 @@ class BblFile
     /** @var string[] */
     private ?array $keys = null;
 
-    public function __construct(string $path)
+    private ?LatexFile $latexFile = null;
+
+    public function __construct(string $path, LatexFile $latexFile = null)
     {
         $this->path = $path;
     }
@@ -283,7 +286,7 @@ class BblFile
      * @param string[][] $references
      * @return string[][]
      */
-    private function getRefsWithCorrectCrossRefs(array $references, bool $objects = false): array
+    private function getRefsWithCorrectCrossRefs(array $references, bool $objects = true): array
     {
         foreach($references as $bibKey => $entry) {
 

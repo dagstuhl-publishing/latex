@@ -41,7 +41,7 @@ class Bibliography
     {
         $this->latexFile = $latexFile;
         $this->bblPath = $bblPath ?? $latexFile->getPath('bbl');
-        $this->bblFile = new BblFile($this->bblPath);
+        $this->bblFile = new BblFile($this->bblPath, $latexFile);
         $this->bibFiles = [];
     }
 
