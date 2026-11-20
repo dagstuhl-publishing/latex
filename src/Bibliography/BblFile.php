@@ -26,6 +26,7 @@ class BblFile
     public function __construct(string $path, LatexFile $latexFile = null)
     {
         $this->path = $path;
+        $this->latexFile = $latexFile;
     }
 
     public function getPath(): string
