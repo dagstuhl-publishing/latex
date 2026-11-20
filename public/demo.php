@@ -1,6 +1,7 @@
 <?php
 
 require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../config.php';
 
 use Dagstuhl\Latex\LatexStructures\LatexFile;
 
@@ -31,3 +32,5 @@ foreach($bibliography->getBibEntries() as $bibEntry) {
 
 $reader = $latexFile->getMetadataReader();
 var_dump($reader->getMetadata());
+
+var_dump('X', $bibliography->getReferences());
