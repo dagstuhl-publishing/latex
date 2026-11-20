@@ -253,7 +253,7 @@ class Bibliography
             case self::BIB_STYLE_INVALID:
 
                 if ($referenceSource === self::REFERENCE_SOURCE_BBL) {
-                    $references = $this->bblFile->getReferences();
+                    $references = $this->bblFile->getReferences(false);
                 }
                 elseif ($referenceSource !== self::REFERENCE_SOURCE_PDF) {
                     // TODO:
