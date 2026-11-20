@@ -22,7 +22,14 @@ class Reference
 
     public static function fromArray(array $referenceArray): Reference
     {
-        return new self((int)$referenceArray['order'], $referenceArray['text'], $referenceArray['url'], $referenceArray['urlType'], $referenceArray['bibKey']);
+        return new self(
+            (int)$referenceArray['order'],
+            $referenceArray['text'],
+            $referenceArray['url'],
+            $referenceArray['urlType'],
+            $referenceArray['bibKey'],
+            $referenceArray['internalData']
+        );
     }
 
     public function toArray($addInternalData = false) : array {
